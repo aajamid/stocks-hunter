@@ -181,6 +181,14 @@ export function DashboardPage() {
     }
   }, [screenerData])
 
+  const companyName = useMemo(() => {
+    const nameFilter = filters.name.trim()
+    if (nameFilter) return nameFilter
+    const firstRow = screenerData?.rows?.[0]
+    if (firstRow?.name_en) return firstRow.name_en
+    return "All Companies"
+  }, [filters.name, screenerData])
+
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
       <aside className="space-y-4">
@@ -218,7 +226,15 @@ export function DashboardPage() {
                 </Button>
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-4">
+              <Card className="border-border/60 bg-muted/40 p-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Company
+                </p>
+                <p className="truncate text-lg font-semibold">
+                  {companyName}
+                </p>
+              </Card>
               <Card className="border-border/60 bg-muted/40 p-3">
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Symbols
