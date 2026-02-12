@@ -110,6 +110,14 @@ export function parseSort(params: URLSearchParams) {
   return { sortBy, sortDir }
 }
 
+export function parseRangeDays(params: URLSearchParams): 14 | 21 | 28 {
+  const rangeDays = Number(params.get("rangeDays") ?? 28)
+  if (rangeDays === 14 || rangeDays === 21 || rangeDays === 28) {
+    return rangeDays
+  }
+  return 28
+}
+
 export function parseFormat(params: URLSearchParams) {
   const format = params.get("format")
   return format === "csv" ? "csv" : "json"

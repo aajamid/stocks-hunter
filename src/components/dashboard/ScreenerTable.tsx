@@ -88,7 +88,7 @@ export function ScreenerTable({
         <TableBody>
           {rows.map((row) => {
             const scoreBadge =
-              row.score < 7
+              row.score < 0
                 ? "bg-destructive/20 text-destructive"
                 : "bg-emerald-500/15 text-emerald-300"
             return (

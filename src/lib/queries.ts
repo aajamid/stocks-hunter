@@ -275,7 +275,85 @@ export async function fetchScreenerRows(filters: ScreenerFilters) {
     params
   )
 
+  const movementBySymbol = new Map<
+    string,
+    { upDays: number; downDays: number; netDirectionDays: number }
+  >()
+
+  if (priceColumn) {
+    const movementResult = await query<{
+      symbol: string
+      up_days: number | null
+      down_days: number | null
+      net_direction_days: number | null
+    }>(
+      `
+      WITH priced AS (
+        SELECT
+          g.symbol,
+          g.trade_date,
+          g.${priceColumn} as price_value,
+          LAG(g.${priceColumn}) OVER (PARTITION BY g.symbol ORDER BY g.trade_date) as prev_price
+        FROM public.gold_saudi_equity_daily_features g
+        LEFT JOIN public.saudi_equity_symbols s
+          ON g.symbol = s.symbol
+        WHERE ${where.join(" AND ")}
+      )
+      SELECT
+        symbol,
+        SUM(
+          CASE
+            WHEN price_value IS NULL OR prev_price IS NULL THEN 0
+            WHEN price_value > prev_price THEN 1
+            ELSE 0
+          END
+        )::int as up_days,
+        SUM(
+          CASE
+            WHEN price_value IS NULL OR prev_price IS NULL THEN 0
+            WHEN price_value < prev_price THEN 1
+            ELSE 0
+          END
+        )::int as down_days,
+        SUM(
+          CASE
+            WHEN price_value IS NULL OR prev_price IS NULL THEN 0
+            WHEN price_value > prev_price THEN 1
+            WHEN price_value < prev_price THEN -1
+            ELSE 0
+          END
+        )::int as net_direction_days
+      FROM priced
+      GROUP BY symbol
+    `,
+      params
+    )
+
+    movementResult.rows.forEach((row) => {
+      movementBySymbol.set(row.symbol, {
+        upDays: Number.isFinite(Number(row.up_days)) ? Number(row.up_days) : 0,
+        downDays: Number.isFinite(Number(row.down_days))
+          ? Number(row.down_days)
+          : 0,
+        netDirectionDays: Number.isFinite(Number(row.net_direction_days))
+          ? Number(row.net_direction_days)
+          : 0,
+      })
+    })
+  }
+
   const rows = result.rows.map((row) => ({
+    ...(movementBySymbol.get(row.symbol)
+      ? {
+          up_days: movementBySymbol.get(row.symbol)!.upDays,
+          down_days: movementBySymbol.get(row.symbol)!.downDays,
+          net_direction_days: movementBySymbol.get(row.symbol)!.netDirectionDays,
+        }
+      : {
+          up_days: 0,
+          down_days: 0,
+          net_direction_days: 0,
+        }),
     symbol: row.symbol,
     name_en: row.name_en ?? null,
     name_ar: row.name_ar ?? null,

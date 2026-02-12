@@ -108,42 +108,25 @@ CREATE TABLE IF NOT EXISTS public.app_scenarios (
 - Missing feature columns are detected and reported in the UI.
 ## Scoring Calculation
 
-Scores are computed per symbol in `src/lib/scoring.ts` using a base score and additive components:
+Scores are computed per symbol in `src/lib/scoring.ts` using day-by-day price direction.
 
 ```
-raw_total =
-  5
-  + momentumComponent
-  + directionComponent
-  + volatilityComponent
-  + volumeSpikeComponent
-  + intradayComponent
-  + capPenalty
+pointPerDay = 100 / rangeDays
+  where rangeDays is one of: 14, 21, 28
 
-score = clamp(round(raw_total, 3), 0, 10)
+for each day in the selected range:
+  if close_t > close_(t-1): add pointPerDay
+  if close_t < close_(t-1): deduct pointPerDay
+  if close_t = close_(t-1): add 0
+
+raw_total = (upDays * pointPerDay) - (downDays * pointPerDay)
+score = clamp(round(raw_total, 3), -100, 100)
 ```
-
-Component formulas:
-
-- `momentumComponent = clamp(z(avg_momentum_5d), -2, 2) * weight.momentum`
-- `directionComponent = clamp((fraction_up - 0.5) * 3, -1.5, 1.5) * weight.direction`
-- `volatilityComponent = -clamp(z(avg_volatility_5d), 0, 2) * weight.volatility`
-- `volumeSpikeComponent = (clamp(z(avg_volume_spike_ratio), 0, 2) / 2) * weight.volumeSpike`
-- `intradayComponent = clamp(z(avg_intraday_strength), -2, 2) * 0.25 * weight.intraday`
-
-Volatility cap penalty (optional):
-
-- If `avg_volatility_5d > volatilityCap`, then:
-  - `capPenalty = -clamp((avg_volatility_5d - volatilityCap) / volatilityCap, 0, 1) * 0.5`
-
-How normalization works:
-
-- `z(x)` is a z-score computed from the currently filtered universe:
-  - `z(x) = (x - mean(filtered_values)) / stdDev(filtered_values)`
-- If standard deviation is `0`, z-score is treated as `0`.
 
 Defaults:
 
-- Base score: `5`
-- Weights: momentum `1`, direction `1`, volatility `1`, volumeSpike `1`, intraday `1`
-- `volatilityCap`: disabled unless provided
+- Default range: `28` business days
+- Example:
+  - 14-day range => `pointPerDay ≈ 7.143`
+  - 21-day range => `pointPerDay ≈ 4.762`
+  - 28-day range => `pointPerDay ≈ 3.571`

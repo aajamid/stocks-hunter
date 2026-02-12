@@ -3,7 +3,12 @@ import { NextResponse, type NextRequest } from "next/server"
 import { computeSummary } from "@/lib/metrics"
 import { fetchScreenerRows, fetchSymbolSeries } from "@/lib/queries"
 import { scoreRows } from "@/lib/scoring"
-import { parseDateRange, parseScenarioConfig, parseScreenerFilters } from "@/lib/validators"
+import {
+  parseDateRange,
+  parseRangeDays,
+  parseScenarioConfig,
+  parseScreenerFilters,
+} from "@/lib/validators"
 
 export async function GET(
   request: NextRequest,
@@ -18,6 +23,7 @@ export async function GET(
     }
     const { start, end } = parseDateRange(searchParams)
     const scenario = parseScenarioConfig(searchParams)
+    const rangeDays = parseRangeDays(searchParams)
 
     const baseFilters = parseScreenerFilters(searchParams)
     const universeFilters = {
@@ -34,7 +40,7 @@ export async function GET(
     ])
 
     const summary = computeSummary(seriesData.series)
-    const scoredRows = scoreRows(screenerData.rows, scenario)
+    const scoredRows = scoreRows(screenerData.rows, scenario, rangeDays)
     const scoreRow = scoredRows.find((row) => row.symbol === symbol) ?? null
 
     return NextResponse.json({

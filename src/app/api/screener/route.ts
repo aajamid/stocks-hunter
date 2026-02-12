@@ -7,6 +7,7 @@ import type { ScreenerRowScored } from "@/lib/types"
 import {
   parseFormat,
   parsePagination,
+  parseRangeDays,
   parseScenarioConfig,
   parseScreenerFilters,
   parseSort,
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const filters = parseScreenerFilters(searchParams)
     const scenario = parseScenarioConfig(searchParams)
+    const rangeDays = parseRangeDays(searchParams)
     const { page, pageSize } = parsePagination(searchParams)
     const { sortBy, sortDir } = parseSort(searchParams)
     const format = parseFormat(searchParams)
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
       usedColumns: screenerUsedColumns,
     } = screenerRowsResult
 
-    const scored = scoreRows(rows, scenario)
+    const scored = scoreRows(rows, scenario, rangeDays)
     const sorted = sortRows(scored, sortBy, sortDir)
 
     const total = sorted.length

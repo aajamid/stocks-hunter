@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { compactFormatter, numberFormatter, percentFormatter } from "@/lib/format"
+import { numberFormatter, percentFormatter } from "@/lib/format"
 import type { ScreenerRowScored, SeriesPoint, SymbolMeta } from "@/lib/types"
 
 type SymbolDetailResponse = {
@@ -153,7 +153,7 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
                 {data.score ? (
                   <Badge
                     className={
-                      data.score.score < 7
+                      data.score.score < 0
                         ? "bg-destructive/20 text-destructive"
                         : "bg-emerald-500/15 text-emerald-300"
                     }
@@ -246,13 +246,11 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {[
-                  ["Base", data.score.score_components.base],
-                  ["Momentum", data.score.score_components.momentum],
-                  ["Direction", data.score.score_components.direction],
-                  ["Volatility", data.score.score_components.volatility],
-                  ["Volume Spike", data.score.score_components.volumeSpike],
-                  ["Intraday", data.score.score_components.intraday],
-                  ["Volatility Cap", data.score.score_components.capPenalty],
+                  ["Point per day", data.score.score_components.pointPerDay],
+                  ["Up score", data.score.score_components.upScore],
+                  ["Down score", data.score.score_components.downScore],
+                  ["Net direction days", data.score.score_components.netDirectionDays],
+                  ["Total", data.score.score_components.total],
                 ].map(([label, value]) => (
                   <div
                     key={label}
@@ -266,37 +264,12 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
                 ))}
               </div>
               <div className="mt-4 text-xs text-muted-foreground">
-                Based on averages in the selected range: momentum{" "}
-                {data.score.score_inputs.avg_momentum_5d !== null
-                  ? compactFormatter.format(
-                      data.score.score_inputs.avg_momentum_5d
-                    )
-                  : "n/a"}
-                , volatility{" "}
-                {data.score.score_inputs.avg_volatility_5d !== null
-                  ? compactFormatter.format(
-                      data.score.score_inputs.avg_volatility_5d
-                    )
-                  : "n/a"}
-                , volume spike{" "}
-                {data.score.score_inputs.avg_volume_spike_ratio !== null
-                  ? compactFormatter.format(
-                      data.score.score_inputs.avg_volume_spike_ratio
-                    )
-                  : "n/a"}
-                , intraday{" "}
-                {data.score.score_inputs.avg_intraday_strength !== null
-                  ? compactFormatter.format(
-                      data.score.score_inputs.avg_intraday_strength
-                    )
-                  : "n/a"}
-                , direction{" "}
-                {data.score.score_inputs.fraction_up !== null
-                  ? percentFormatter.format(
-                      data.score.score_inputs.fraction_up
-                    )
-                  : "n/a"}
-                .
+                Score logic: for each selected business day, add{" "}
+                {numberFormatter.format(data.score.score_components.pointPerDay)} if
+                close increased vs previous day, and deduct the same amount if it
+                decreased. Current range is {data.score.score_inputs.rangeDays} days
+                with {data.score.score_inputs.upDays} up days and{" "}
+                {data.score.score_inputs.downDays} down days.
               </div>
             </Card>
           ) : null}

@@ -32,25 +32,24 @@ export type ScreenerRow = {
   avg_volume_spike_ratio?: number | null
   avg_intraday_strength?: number | null
   fraction_up?: number | null
+  up_days?: number | null
+  down_days?: number | null
+  net_direction_days?: number | null
 }
 
 export type ScoreComponents = {
-  base: number
-  momentum: number
-  direction: number
-  volatility: number
-  volumeSpike: number
-  intraday: number
-  capPenalty: number
+  pointPerDay: number
+  upScore: number
+  downScore: number
+  netDirectionDays: number
   total: number
 }
 
 export type ScoreInputs = {
-  avg_momentum_5d?: number | null
-  avg_volatility_5d?: number | null
-  avg_volume_spike_ratio?: number | null
-  avg_intraday_strength?: number | null
-  fraction_up?: number | null
+  rangeDays: number
+  upDays: number
+  downDays: number
+  netDirectionDays: number
 }
 
 export type ScreenerRowScored = ScreenerRow & {
