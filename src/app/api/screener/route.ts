@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { toCsv } from "@/lib/csv"
+import { ensureRecentBusinessDayCoverage } from "@/lib/data-coverage"
 import { fetchMarketPriceSeries, fetchScreenerRows } from "@/lib/queries"
 import { scoreRows } from "@/lib/scoring"
 import type { ScreenerRowScored } from "@/lib/types"
@@ -39,6 +40,11 @@ function sortRows(
 
 export async function GET(request: NextRequest) {
   try {
+    const coverage = await ensureRecentBusinessDayCoverage()
+    if (coverage.missingAfterCount > 0) {
+      console.warn("data coverage warning", coverage)
+    }
+
     const { searchParams } = new URL(request.url)
     const filters = parseScreenerFilters(searchParams)
     const scenario = parseScenarioConfig(searchParams)

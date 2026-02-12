@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 
+import { ensureRecentBusinessDayCoverage } from "@/lib/data-coverage"
 import { computeSummary } from "@/lib/metrics"
 import { fetchScreenerRows, fetchSymbolSeries } from "@/lib/queries"
 import { scoreRows } from "@/lib/scoring"
@@ -15,6 +16,11 @@ export async function GET(
   context: { params: Promise<{ symbol: string }> }
 ) {
   try {
+    const coverage = await ensureRecentBusinessDayCoverage()
+    if (coverage.missingAfterCount > 0) {
+      console.warn("data coverage warning", coverage)
+    }
+
     const { searchParams } = new URL(request.url)
     const { symbol: rawSymbol } = await context.params
     const symbol = rawSymbol?.toUpperCase()

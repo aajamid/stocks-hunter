@@ -51,6 +51,16 @@ npm run build
 npm run start
 ```
 
+## Data Coverage Guard
+
+The API now runs a daily coverage check (cached for 24 hours) to ensure active symbols have data for the last 28 Saudi business days in `public.gold_saudi_equity_daily_features`.
+
+- If gaps are detected, it attempts a backfill from `public.saudi_equity_ohlcv_daily` for missing `(symbol, trade_date)` rows in that window.
+- The check runs automatically on:
+  - `GET /api/screener`
+  - `GET /api/symbol/[symbol]`
+- It logs warnings if coverage remains incomplete after backfill.
+
 ## Database Tables
 
 Expected tables (schema: `public`):
@@ -130,3 +140,11 @@ Defaults:
   - 14-day range => `pointPerDay ≈ 7.143`
   - 21-day range => `pointPerDay ≈ 4.762`
   - 28-day range => `pointPerDay ≈ 3.571`
+
+## Scoring Tests
+
+Run scoring unit tests:
+
+```
+npm run test:scoring
+```
