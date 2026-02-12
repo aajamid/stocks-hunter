@@ -3,14 +3,21 @@
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import type { SymbolMeta } from "@/lib/types"
 
 import { MultiSelect } from "./MultiSelect"
 
 export type FilterState = {
-  start: string
-  end: string
+  rangeMode: "rolling"
+  rangeDays: 14 | 21 | 28
   name: string
   symbols: string[]
   sectors: string[]
@@ -52,26 +59,39 @@ export function FiltersSidebar({
     <div className="flex flex-col gap-4">
       <Card className="space-y-4 border-border/70 bg-card/50 p-4">
         <div className="space-y-2">
-          <Label htmlFor="start-date">Start date</Label>
-          <Input
-            id="start-date"
-            type="date"
-            value={filters.start}
-            onChange={(event) =>
-              onChange({ ...filters, start: event.target.value })
-            }
-          />
+          <Label htmlFor="range-mode">Range</Label>
+          <Select
+            value={filters.rangeMode}
+            onValueChange={() => onChange({ ...filters, rangeMode: "rolling" })}
+          >
+            <SelectTrigger id="range-mode" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="rolling">Trailing days</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="end-date">End date</Label>
-          <Input
-            id="end-date"
-            type="date"
-            value={filters.end}
-            onChange={(event) =>
-              onChange({ ...filters, end: event.target.value })
+          <Label htmlFor="range-size">Range size</Label>
+          <Select
+            value={String(filters.rangeDays)}
+            onValueChange={(value) =>
+              onChange({
+                ...filters,
+                rangeDays: Number(value) as 14 | 21 | 28,
+              })
             }
-          />
+          >
+            <SelectTrigger id="range-size" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="14">14 days</SelectItem>
+              <SelectItem value="21">21 days</SelectItem>
+              <SelectItem value="28">28 days</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="name-search">Company search</Label>

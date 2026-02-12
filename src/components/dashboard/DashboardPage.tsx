@@ -18,10 +18,14 @@ import type { ScreenerResponse, SymbolMeta } from "@/lib/types"
 
 const toDateString = (date: Date) => date.toISOString().slice(0, 10)
 
-const defaultStart = () => {
-  const date = new Date()
-  date.setDate(date.getDate() - 30)
-  return toDateString(date)
+const resolveRollingDateRange = (rangeDays: 14 | 21 | 28) => {
+  const end = new Date()
+  const start = new Date(end)
+  start.setDate(start.getDate() - (rangeDays - 1))
+  return {
+    start: toDateString(start),
+    end: toDateString(end),
+  }
 }
 
 type SymbolsPayload = {
@@ -44,8 +48,8 @@ const readApiError = async (response: Response, fallback: string) => {
 export function DashboardPage() {
   const router = useRouter()
   const [filters, setFilters] = useState<FilterState>({
-    start: defaultStart(),
-    end: toDateString(new Date()),
+    rangeMode: "rolling",
+    rangeDays: 28,
     name: "",
     symbols: [],
     sectors: [],
@@ -61,6 +65,11 @@ export function DashboardPage() {
   const [pageSize, setPageSize] = useState(50)
   const [sortBy, setSortBy] = useState("score")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
+
+  const dateRange = useMemo(
+    () => resolveRollingDateRange(filters.rangeDays),
+    [filters.rangeDays]
+  )
 
   const fetchSymbols = useCallback(async () => {
     try {
@@ -87,8 +96,8 @@ export function DashboardPage() {
   const buildQueryString = useCallback(
     (format?: "csv") => {
       const params = new URLSearchParams()
-      params.set("start", filters.start)
-      params.set("end", filters.end)
+      params.set("start", dateRange.start)
+      params.set("end", dateRange.end)
       if (filters.name) params.set("name", filters.name)
       if (filters.symbols.length)
         params.set("symbols", filters.symbols.join(","))
@@ -106,7 +115,7 @@ export function DashboardPage() {
       if (format) params.set("format", format)
       return params.toString()
     },
-    [filters, page, pageSize, scenario, sortBy, sortDir]
+    [dateRange, filters, page, pageSize, scenario, sortBy, sortDir]
   )
 
   const fetchScreener = useCallback(async () => {
@@ -159,8 +168,8 @@ export function DashboardPage() {
 
   const handleRowClick = (symbol: string) => {
     const params = new URLSearchParams()
-    params.set("start", filters.start)
-    params.set("end", filters.end)
+    params.set("start", dateRange.start)
+    params.set("end", dateRange.end)
     if (filters.sectors.length) params.set("sectors", filters.sectors.join(","))
     if (filters.markets.length) params.set("markets", filters.markets.join(","))
     if (filters.activeOnly) params.set("activeOnly", "true")

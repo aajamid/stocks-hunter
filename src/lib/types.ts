@@ -70,6 +70,9 @@ export type SeriesPoint = {
 
 export type MarketSeriesPoint = {
   trade_date: string
+  avg_open: number | null
+  avg_high: number | null
+  avg_low: number | null
   avg_close: number | null
   symbol_count: number
 }

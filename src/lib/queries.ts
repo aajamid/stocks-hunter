@@ -315,6 +315,10 @@ export async function fetchMarketPriceSeries(filters: ScreenerFilters) {
     : featureColumns.has("adjusted_close")
     ? "adjusted_close"
     : null
+  const openColumn = featureColumns.has("open") ? "open" : null
+  const highColumn = featureColumns.has("high") ? "high" : null
+  const lowColumn = featureColumns.has("low") ? "low" : null
+
   if (!priceColumn) {
     missingColumns.push("close")
     return {
@@ -324,6 +328,12 @@ export async function fetchMarketPriceSeries(filters: ScreenerFilters) {
     }
   }
   usedColumns.push(priceColumn)
+  if (openColumn) usedColumns.push(openColumn)
+  if (highColumn) usedColumns.push(highColumn)
+  if (lowColumn) usedColumns.push(lowColumn)
+  if (!openColumn) missingColumns.push("open")
+  if (!highColumn) missingColumns.push("high")
+  if (!lowColumn) missingColumns.push("low")
 
   const hasNameEn = symbolColumns.has("name_en")
   const hasNameAr = symbolColumns.has("name_ar")
@@ -403,12 +413,30 @@ export async function fetchMarketPriceSeries(filters: ScreenerFilters) {
 
   const result = await query<{
     trade_date: string
+    avg_open: number | null
+    avg_high: number | null
+    avg_low: number | null
     avg_close: number | null
     symbol_count: number
   }>(
     `
     SELECT
       to_char(g.trade_date, 'YYYY-MM-DD') as trade_date,
+      ${
+        openColumn
+          ? `AVG(g.${openColumn})::double precision`
+          : "NULL::double precision"
+      } as avg_open,
+      ${
+        highColumn
+          ? `AVG(g.${highColumn})::double precision`
+          : "NULL::double precision"
+      } as avg_high,
+      ${
+        lowColumn
+          ? `AVG(g.${lowColumn})::double precision`
+          : "NULL::double precision"
+      } as avg_low,
       AVG(g.${priceColumn})::double precision as avg_close,
       COUNT(DISTINCT g.symbol)::int as symbol_count
     FROM public.gold_saudi_equity_daily_features g
@@ -423,6 +451,9 @@ export async function fetchMarketPriceSeries(filters: ScreenerFilters) {
 
   const series = result.rows.map((row) => ({
     trade_date: row.trade_date,
+    avg_open: toNumber(row.avg_open),
+    avg_high: toNumber(row.avg_high),
+    avg_low: toNumber(row.avg_low),
     avg_close: toNumber(row.avg_close),
     symbol_count:
       Number.isFinite(Number(row.symbol_count)) && Number(row.symbol_count) > 0
