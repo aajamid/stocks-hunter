@@ -7,11 +7,15 @@ import { parseDateRange, parseScenarioConfig, parseScreenerFilters } from "@/lib
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { symbol: string } }
+  context: { params: Promise<{ symbol: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url)
-    const symbol = params.symbol.toUpperCase()
+    const { symbol: rawSymbol } = await context.params
+    const symbol = rawSymbol?.toUpperCase()
+    if (!symbol) {
+      throw new Error("Symbol parameter is missing")
+    }
     const { start, end } = parseDateRange(searchParams)
     const scenario = parseScenarioConfig(searchParams)
 
