@@ -1,0 +1,432 @@
+import { getAvailableColumns } from "@/lib/columns"
+import { getCache, setCache } from "@/lib/cache"
+import { query } from "@/lib/db"
+import type {
+  ScreenerFilters,
+  ScreenerRow,
+  SeriesPoint,
+  SymbolMeta,
+} from "@/lib/types"
+
+const SYMBOLS_TTL_MS = 5 * 60 * 1000
+
+const toNumber = (value: unknown) => {
+  if (value === null || value === undefined) return null
+  const num = Number(value)
+  return Number.isFinite(num) ? num : null
+}
+
+const toBoolean = (value: unknown) => {
+  if (value === null || value === undefined) return null
+  if (typeof value === "boolean") return value
+  if (value === "true") return true
+  if (value === "false") return false
+  return null
+}
+
+export async function fetchSymbolsList() {
+  const cacheKey = "symbols:list"
+  const cached = getCache<{
+    symbols: SymbolMeta[]
+    sectors: string[]
+    markets: string[]
+    missingColumns: string[]
+  }>(cacheKey)
+  if (cached) return cached
+
+  const columns = await getAvailableColumns("saudi_equity_symbols")
+  const missingColumns: string[] = []
+
+  const hasNameEn = columns.has("name_en")
+  const hasNameAr = columns.has("name_ar")
+  const hasSector = columns.has("sector")
+  const hasMarket = columns.has("market")
+  const hasIsActive = columns.has("is_active")
+
+  if (!hasNameEn) missingColumns.push("name_en")
+  if (!hasNameAr) missingColumns.push("name_ar")
+  if (!hasSector) missingColumns.push("sector")
+  if (!hasMarket) missingColumns.push("market")
+  if (!hasIsActive) missingColumns.push("is_active")
+
+  const select = [
+    "symbol",
+    hasNameEn ? "name_en" : "NULL::text as name_en",
+    hasNameAr ? "name_ar" : "NULL::text as name_ar",
+    hasSector ? "sector" : "NULL::text as sector",
+    hasMarket ? "market" : "NULL::text as market",
+    hasIsActive ? "is_active" : "NULL::boolean as is_active",
+  ]
+
+  const result = await query<SymbolMeta>(
+    `
+    SELECT ${select.join(", ")}
+    FROM public.saudi_equity_symbols
+    ORDER BY symbol
+  `,
+    []
+  )
+
+  const symbols = result.rows.map((row) => ({
+    symbol: row.symbol,
+    name_en: row.name_en ?? null,
+    name_ar: row.name_ar ?? null,
+    sector: row.sector ?? null,
+    market: row.market ?? null,
+    is_active: toBoolean(row.is_active) ?? null,
+  }))
+
+  const sectors = Array.from(
+    new Set(symbols.map((row) => row.sector).filter(Boolean) as string[])
+  ).sort()
+  const markets = Array.from(
+    new Set(symbols.map((row) => row.market).filter(Boolean) as string[])
+  ).sort()
+
+  const payload = { symbols, sectors, markets, missingColumns }
+  setCache(cacheKey, payload, SYMBOLS_TTL_MS)
+  return payload
+}
+
+export async function fetchScreenerRows(filters: ScreenerFilters) {
+  const featureColumns = await getAvailableColumns(
+    "gold_saudi_equity_daily_features"
+  )
+  const symbolColumns = await getAvailableColumns("saudi_equity_symbols")
+
+  const missingColumns: string[] = []
+  const usedColumns: string[] = []
+
+  const priceColumn = featureColumns.has("close")
+    ? "close"
+    : featureColumns.has("adjusted_close")
+    ? "adjusted_close"
+    : null
+  if (!priceColumn) {
+    missingColumns.push("close")
+  } else {
+    usedColumns.push(priceColumn)
+  }
+
+  const volumeColumn = featureColumns.has("volume")
+    ? "volume"
+    : featureColumns.has("turnover")
+    ? "turnover"
+    : null
+  if (!volumeColumn) {
+    missingColumns.push("volume")
+  } else {
+    usedColumns.push(volumeColumn)
+  }
+
+  const hasDailyReturn = featureColumns.has("daily_return")
+  const hasMomentum = featureColumns.has("momentum_5d")
+  const hasVolatility = featureColumns.has("volatility_5d")
+  const hasVolumeSpike = featureColumns.has("volume_spike_ratio")
+  const hasIntraday = featureColumns.has("intraday_strength")
+  const hasDirection = featureColumns.has("direction_signal")
+
+  if (!hasDailyReturn) missingColumns.push("daily_return")
+  if (hasDailyReturn) usedColumns.push("daily_return")
+  if (!hasMomentum) missingColumns.push("momentum_5d")
+  if (hasMomentum) usedColumns.push("momentum_5d")
+  if (!hasVolatility) missingColumns.push("volatility_5d")
+  if (hasVolatility) usedColumns.push("volatility_5d")
+  if (!hasVolumeSpike) missingColumns.push("volume_spike_ratio")
+  if (hasVolumeSpike) usedColumns.push("volume_spike_ratio")
+  if (!hasIntraday) missingColumns.push("intraday_strength")
+  if (hasIntraday) usedColumns.push("intraday_strength")
+  if (!hasDirection) missingColumns.push("direction_signal")
+  if (hasDirection) usedColumns.push("direction_signal")
+
+  const hasNameEn = symbolColumns.has("name_en")
+  const hasNameAr = symbolColumns.has("name_ar")
+  const hasSector = symbolColumns.has("sector")
+  const hasMarket = symbolColumns.has("market")
+  const hasIsActive = symbolColumns.has("is_active")
+
+  if (hasNameEn) usedColumns.push("name_en")
+  if (hasNameAr) usedColumns.push("name_ar")
+  if (hasSector) usedColumns.push("sector")
+  if (hasMarket) usedColumns.push("market")
+  if (hasIsActive) usedColumns.push("is_active")
+
+  if (!hasNameEn) missingColumns.push("name_en")
+  if (hasNameEn) usedColumns.push("name_en")
+  if (!hasNameAr) missingColumns.push("name_ar")
+  if (hasNameAr) usedColumns.push("name_ar")
+  if (!hasSector) missingColumns.push("sector")
+  if (hasSector) usedColumns.push("sector")
+  if (!hasMarket) missingColumns.push("market")
+  if (hasMarket) usedColumns.push("market")
+  if (!hasIsActive) missingColumns.push("is_active")
+  if (hasIsActive) usedColumns.push("is_active")
+
+  const select = [
+    "g.symbol",
+    hasNameEn ? "s.name_en" : "NULL::text as name_en",
+    hasNameAr ? "s.name_ar" : "NULL::text as name_ar",
+    hasSector ? "s.sector" : "NULL::text as sector",
+    hasMarket ? "s.market" : "NULL::text as market",
+    hasIsActive ? "s.is_active" : "NULL::boolean as is_active",
+    priceColumn
+      ? `(ARRAY_AGG(g.${priceColumn} ORDER BY g.trade_date ASC))[1] as first_close`
+      : "NULL::double precision as first_close",
+    priceColumn
+      ? `(ARRAY_AGG(g.${priceColumn} ORDER BY g.trade_date DESC))[1] as latest_close`
+      : "NULL::double precision as latest_close",
+    hasDailyReturn
+      ? "AVG(g.daily_return) as avg_daily_return"
+      : "NULL::double precision as avg_daily_return",
+    hasMomentum
+      ? "AVG(g.momentum_5d) as avg_momentum_5d"
+      : "NULL::double precision as avg_momentum_5d",
+    hasVolatility
+      ? "AVG(g.volatility_5d) as avg_volatility_5d"
+      : "NULL::double precision as avg_volatility_5d",
+    hasVolumeSpike
+      ? "AVG(g.volume_spike_ratio) as avg_volume_spike_ratio"
+      : "NULL::double precision as avg_volume_spike_ratio",
+    hasIntraday
+      ? "AVG(g.intraday_strength) as avg_intraday_strength"
+      : "NULL::double precision as avg_intraday_strength",
+    hasDirection
+      ? "AVG(CASE WHEN g.direction_signal = 1 THEN 1 ELSE 0 END) as fraction_up"
+      : "NULL::double precision as fraction_up",
+  ]
+
+  const where: string[] = ["g.trade_date BETWEEN $1 AND $2"]
+  const params: Array<string | string[] | number | boolean> = [
+    filters.start,
+    filters.end,
+  ]
+
+  if (filters.symbols?.length) {
+    params.push(filters.symbols)
+    where.push(`g.symbol = ANY($${params.length})`)
+  }
+
+  if (filters.sectors?.length) {
+    if (hasSector) {
+      params.push(filters.sectors)
+      where.push(`s.sector = ANY($${params.length})`)
+    } else {
+      missingColumns.push("sector")
+    }
+  }
+
+  if (filters.markets?.length) {
+    if (hasMarket) {
+      params.push(filters.markets)
+      where.push(`s.market = ANY($${params.length})`)
+    } else {
+      missingColumns.push("market")
+    }
+  }
+
+  if (filters.activeOnly) {
+    if (hasIsActive) {
+      where.push("s.is_active = true")
+    } else {
+      missingColumns.push("is_active")
+    }
+  }
+
+  if (filters.name) {
+    const search = `%${filters.name}%`
+    params.push(search)
+    if (hasNameEn && hasNameAr) {
+      where.push(
+        `(s.name_en ILIKE $${params.length} OR s.name_ar ILIKE $${params.length} OR g.symbol ILIKE $${params.length})`
+      )
+    } else if (hasNameEn) {
+      where.push(
+        `(s.name_en ILIKE $${params.length} OR g.symbol ILIKE $${params.length})`
+      )
+    } else if (hasNameAr) {
+      where.push(
+        `(s.name_ar ILIKE $${params.length} OR g.symbol ILIKE $${params.length})`
+      )
+    } else {
+      where.push(`g.symbol ILIKE $${params.length}`)
+      missingColumns.push("name_en")
+      missingColumns.push("name_ar")
+    }
+  }
+
+  const groupBy = ["g.symbol"]
+  if (hasNameEn) groupBy.push("s.name_en")
+  if (hasNameAr) groupBy.push("s.name_ar")
+  if (hasSector) groupBy.push("s.sector")
+  if (hasMarket) groupBy.push("s.market")
+  if (hasIsActive) groupBy.push("s.is_active")
+
+  const result = await query<ScreenerRow>(
+    `
+    SELECT ${select.join(", ")}
+    FROM public.gold_saudi_equity_daily_features g
+    LEFT JOIN public.saudi_equity_symbols s
+      ON g.symbol = s.symbol
+    WHERE ${where.join(" AND ")}
+    GROUP BY ${groupBy.join(", ")}
+    ORDER BY g.symbol
+  `,
+    params
+  )
+
+  const rows = result.rows.map((row) => ({
+    symbol: row.symbol,
+    name_en: row.name_en ?? null,
+    name_ar: row.name_ar ?? null,
+    sector: row.sector ?? null,
+    market: row.market ?? null,
+    is_active: toBoolean(row.is_active),
+    first_close: toNumber(row.first_close),
+    latest_close: toNumber(row.latest_close),
+    avg_daily_return: toNumber(row.avg_daily_return),
+    avg_momentum_5d: toNumber(row.avg_momentum_5d),
+    avg_volatility_5d: toNumber(row.avg_volatility_5d),
+    avg_volume_spike_ratio: toNumber(row.avg_volume_spike_ratio),
+    avg_intraday_strength: toNumber(row.avg_intraday_strength),
+    fraction_up: toNumber(row.fraction_up),
+  }))
+
+  const uniqueMissing = Array.from(new Set(missingColumns))
+  const uniqueUsed = Array.from(new Set(usedColumns))
+  return {
+    rows,
+    missingColumns: uniqueMissing,
+    usedColumns: uniqueUsed,
+  }
+}
+
+export async function fetchSymbolSeries(
+  symbol: string,
+  start: string,
+  end: string
+) {
+  const featureColumns = await getAvailableColumns(
+    "gold_saudi_equity_daily_features"
+  )
+  const symbolColumns = await getAvailableColumns("saudi_equity_symbols")
+
+  const missingColumns: string[] = []
+  const usedColumns: string[] = []
+
+  const priceColumn = featureColumns.has("close")
+    ? "close"
+    : featureColumns.has("adjusted_close")
+    ? "adjusted_close"
+    : null
+  if (!priceColumn) {
+    missingColumns.push("close")
+  } else {
+    usedColumns.push(priceColumn)
+  }
+
+  const volumeColumn = featureColumns.has("volume")
+    ? "volume"
+    : featureColumns.has("turnover")
+    ? "turnover"
+    : null
+  if (!volumeColumn) {
+    missingColumns.push("volume")
+  } else {
+    usedColumns.push(volumeColumn)
+  }
+
+  const hasDailyReturn = featureColumns.has("daily_return")
+  const hasMomentum = featureColumns.has("momentum_5d")
+  const hasVolatility = featureColumns.has("volatility_5d")
+
+  if (!hasDailyReturn) missingColumns.push("daily_return")
+  if (hasDailyReturn) usedColumns.push("daily_return")
+  if (!hasMomentum) missingColumns.push("momentum_5d")
+  if (hasMomentum) usedColumns.push("momentum_5d")
+  if (!hasVolatility) missingColumns.push("volatility_5d")
+  if (hasVolatility) usedColumns.push("volatility_5d")
+
+  const select = [
+    "to_char(g.trade_date, 'YYYY-MM-DD') as trade_date",
+    priceColumn
+      ? `g.${priceColumn} as close`
+      : "NULL::double precision as close",
+    volumeColumn
+      ? `g.${volumeColumn} as volume`
+      : "NULL::double precision as volume",
+    hasDailyReturn
+      ? "g.daily_return"
+      : "NULL::double precision as daily_return",
+    hasMomentum
+      ? "g.momentum_5d"
+      : "NULL::double precision as momentum_5d",
+    hasVolatility
+      ? "g.volatility_5d"
+      : "NULL::double precision as volatility_5d",
+  ]
+
+  const seriesResult = await query<SeriesPoint>(
+    `
+    SELECT ${select.join(", ")}
+    FROM public.gold_saudi_equity_daily_features g
+    WHERE g.symbol = $1
+      AND g.trade_date BETWEEN $2 AND $3
+    ORDER BY g.trade_date ASC
+  `,
+    [symbol, start, end]
+  )
+
+  const series = seriesResult.rows.map((row) => ({
+    trade_date: row.trade_date,
+    close: toNumber(row.close),
+    volume: toNumber(row.volume),
+    daily_return: toNumber(row.daily_return),
+    momentum_5d: toNumber(row.momentum_5d),
+    volatility_5d: toNumber(row.volatility_5d),
+  }))
+
+  const hasNameEn = symbolColumns.has("name_en")
+  const hasNameAr = symbolColumns.has("name_ar")
+  const hasSector = symbolColumns.has("sector")
+  const hasMarket = symbolColumns.has("market")
+  const hasIsActive = symbolColumns.has("is_active")
+
+  const metaSelect = [
+    "symbol",
+    hasNameEn ? "name_en" : "NULL::text as name_en",
+    hasNameAr ? "name_ar" : "NULL::text as name_ar",
+    hasSector ? "sector" : "NULL::text as sector",
+    hasMarket ? "market" : "NULL::text as market",
+    hasIsActive ? "is_active" : "NULL::boolean as is_active",
+  ]
+
+  const metaResult = await query<SymbolMeta>(
+    `
+    SELECT ${metaSelect.join(", ")}
+    FROM public.saudi_equity_symbols
+    WHERE symbol = $1
+    LIMIT 1
+  `,
+    [symbol]
+  )
+
+  const meta = metaResult.rows[0]
+    ? {
+        symbol: metaResult.rows[0].symbol,
+        name_en: metaResult.rows[0].name_en ?? null,
+        name_ar: metaResult.rows[0].name_ar ?? null,
+        sector: metaResult.rows[0].sector ?? null,
+        market: metaResult.rows[0].market ?? null,
+        is_active: toBoolean(metaResult.rows[0].is_active),
+      }
+    : null
+
+  const uniqueMissing = Array.from(new Set(missingColumns))
+  const uniqueUsed = Array.from(new Set(usedColumns))
+  return {
+    series,
+    meta,
+    missingColumns: uniqueMissing,
+    usedColumns: uniqueUsed,
+  }
+}
