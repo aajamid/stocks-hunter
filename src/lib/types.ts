@@ -68,6 +68,12 @@ export type SeriesPoint = {
   volatility_5d?: number | null
 }
 
+export type MarketSeriesPoint = {
+  trade_date: string
+  avg_close: number | null
+  symbol_count: number
+}
+
 export type ScenarioConfig = {
   weights: {
     momentum: number
@@ -83,6 +89,7 @@ export type ScenarioConfig = {
 
 export type ScreenerResponse = {
   rows: ScreenerRowScored[]
+  marketSeries: MarketSeriesPoint[]
   total: number
   page: number
   pageSize: number

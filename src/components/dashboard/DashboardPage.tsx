@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { ErrorBanner } from "@/components/common/ErrorBanner"
 import { EmptyState } from "@/components/common/EmptyState"
 import { LoadingState } from "@/components/common/LoadingState"
+import { DashboardScoreLineChart } from "@/components/charts/DashboardScoreLineChart"
 import { FiltersSidebar, type FilterState } from "@/components/dashboard/FiltersSidebar"
 import { ScenarioPanel } from "@/components/dashboard/ScenarioPanel"
 import { ScreenerTable } from "@/components/dashboard/ScreenerTable"
@@ -28,6 +29,16 @@ type SymbolsPayload = {
   sectors: string[]
   markets: string[]
   missingColumns: string[]
+}
+
+const readApiError = async (response: Response, fallback: string) => {
+  try {
+    const payload = (await response.json()) as { error?: string }
+    if (payload?.error) return payload.error
+  } catch {
+    // Ignore JSON parsing errors and use fallback message.
+  }
+  return fallback
 }
 
 export function DashboardPage() {
@@ -54,12 +65,22 @@ export function DashboardPage() {
   const fetchSymbols = useCallback(async () => {
     try {
       const response = await fetch("/api/symbols")
-      if (!response.ok) throw new Error("Failed to load symbol metadata.")
+      if (!response.ok) {
+        const errorMessage = await readApiError(
+          response,
+          "Failed to load symbol metadata."
+        )
+        throw new Error(errorMessage)
+      }
       const payload = (await response.json()) as SymbolsPayload
       setSymbolsData(payload)
     } catch (err) {
       console.error(err)
-      setError("Failed to load symbol metadata.")
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load symbol metadata."
+      )
     }
   }, [])
 
@@ -93,12 +114,20 @@ export function DashboardPage() {
     setError(null)
     try {
       const response = await fetch(`/api/screener?${buildQueryString()}`)
-      if (!response.ok) throw new Error("Failed to load screener data.")
+      if (!response.ok) {
+        const errorMessage = await readApiError(
+          response,
+          "Failed to load screener data."
+        )
+        throw new Error(errorMessage)
+      }
       const payload = (await response.json()) as ScreenerResponse
       setScreenerData(payload)
     } catch (err) {
       console.error(err)
-      setError("Failed to load screener data.")
+      setError(
+        err instanceof Error ? err.message : "Failed to load screener data."
+      )
     } finally {
       setLoading(false)
     }
@@ -221,6 +250,7 @@ export function DashboardPage() {
                 </p>
               </Card>
             </div>
+            <DashboardScoreLineChart series={screenerData?.marketSeries ?? []} />
             {screenerData?.missingColumns?.length ? (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
                 Missing columns: {screenerData.missingColumns.join(", ")}

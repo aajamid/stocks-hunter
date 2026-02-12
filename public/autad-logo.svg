@@ -1,0 +1,17 @@
+<svg width="240" height="72" viewBox="0 0 240 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="autadG" x1="12" y1="12" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0EA5E9"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="#0B1220"/>
+  <path d="M19 44L32 18L45 44H38.2L35.6 38.7H28.4L25.8 44H19Z" fill="url(#autadG)"/>
+  <path d="M31 33.6H33.2L32.1 31.2L31 33.6Z" fill="#0B1220"/>
+  <path d="M67 26.5H77.8C84.7 26.5 88.7 30.1 88.7 36C88.7 41.9 84.7 45.5 77.8 45.5H67V26.5ZM77.1 39.8C80.4 39.8 82.2 38.4 82.2 36C82.2 33.6 80.4 32.2 77.1 32.2H73.4V39.8H77.1Z" fill="#E5E7EB"/>
+  <path d="M91.8 26.5H98.2V45.5H91.8V26.5Z" fill="#E5E7EB"/>
+  <path d="M101.3 26.5H113.4C119 26.5 122.2 29.1 122.2 33.7C122.2 36.9 120.4 39.1 117.3 40.1L122.8 45.5H115.2L110.7 40.9H107.7V45.5H101.3V26.5ZM112.8 35.9C114.8 35.9 115.9 35.1 115.9 33.7C115.9 32.3 114.8 31.5 112.8 31.5H107.7V35.9H112.8Z" fill="#E5E7EB"/>
+  <path d="M126.1 26.5H134.2L141.5 45.5H134.9L133.8 42.2H126.5L125.4 45.5H118.8L126.1 26.5ZM132 37.6L130.2 32.3L128.3 37.6H132Z" fill="#E5E7EB"/>
+  <path d="M143.1 26.5H153.9C160.8 26.5 164.8 30.1 164.8 36C164.8 41.9 160.8 45.5 153.9 45.5H143.1V26.5ZM153.2 39.8C156.5 39.8 158.3 38.4 158.3 36C158.3 33.6 156.5 32.2 153.2 32.2H149.5V39.8H153.2Z" fill="#E5E7EB"/>
+  <text x="169" y="45.5" fill="#94A3B8" font-family="Arial, sans-serif" font-size="11" letter-spacing="1.6">AUTAD</text>
+</svg>

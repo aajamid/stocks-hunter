@@ -48,8 +48,13 @@ export async function GET(
     })
   } catch (error) {
     console.error("symbol api error", error)
+    const detail = error instanceof Error ? error.message : undefined
     return NextResponse.json(
-      { error: "Failed to load symbol details." },
+      {
+        error: detail
+          ? `Failed to load symbol details. ${detail}`
+          : "Failed to load symbol details.",
+      },
       { status: 500 }
     )
   }

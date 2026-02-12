@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { toCsv } from "@/lib/csv"
-import { fetchScreenerRows } from "@/lib/queries"
+import { fetchMarketPriceSeries, fetchScreenerRows } from "@/lib/queries"
 import { scoreRows } from "@/lib/scoring"
 import type { ScreenerRowScored } from "@/lib/types"
 import {
@@ -45,9 +45,16 @@ export async function GET(request: NextRequest) {
     const { sortBy, sortDir } = parseSort(searchParams)
     const format = parseFormat(searchParams)
 
-    const { rows, missingColumns, usedColumns } = await fetchScreenerRows(
-      filters
-    )
+    const [screenerRowsResult, marketSeriesResult] = await Promise.all([
+      fetchScreenerRows(filters),
+      fetchMarketPriceSeries(filters),
+    ])
+    const {
+      rows,
+      missingColumns: screenerMissingColumns,
+      usedColumns: screenerUsedColumns,
+    } = screenerRowsResult
+
     const scored = scoreRows(rows, scenario)
     const sorted = sortRows(scored, sortBy, sortDir)
 
@@ -93,11 +100,16 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       rows: pagedRows,
+      marketSeries: marketSeriesResult.series,
       total,
       page,
       pageSize,
-      missingColumns,
-      usedColumns,
+      missingColumns: Array.from(
+        new Set([...screenerMissingColumns, ...marketSeriesResult.missingColumns])
+      ),
+      usedColumns: Array.from(
+        new Set([...screenerUsedColumns, ...marketSeriesResult.usedColumns])
+      ),
       summary: {
         avgScore,
         avgDailyReturn,
@@ -105,8 +117,13 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("screener api error", error)
+    const detail = error instanceof Error ? error.message : undefined
     return NextResponse.json(
-      { error: "Failed to load screener data." },
+      {
+        error: detail
+          ? `Failed to load screener data. ${detail}`
+          : "Failed to load screener data.",
+      },
       { status: 500 }
     )
   }

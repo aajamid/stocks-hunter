@@ -1,3 +1,4 @@
+import Image from "next/image"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,16 @@ export function AppShell({ title, subtitle, children }: AppShellProps) {
     <div className="min-h-screen px-6 pb-10 pt-6 text-foreground">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
+          <div className="mb-2">
+            <Image
+              src="/autad-logo-white.png"
+              alt="Autad"
+              width={200}
+              height={78}
+              priority
+              className="h-9 w-auto"
+            />
+          </div>
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Saudi Stocks Hunter
           </p>

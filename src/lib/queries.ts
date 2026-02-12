@@ -2,6 +2,7 @@ import { getAvailableColumns } from "@/lib/columns"
 import { getCache, setCache } from "@/lib/cache"
 import { query } from "@/lib/db"
 import type {
+  MarketSeriesPoint,
   ScreenerFilters,
   ScreenerRow,
   SeriesPoint,
@@ -297,6 +298,142 @@ export async function fetchScreenerRows(filters: ScreenerFilters) {
     rows,
     missingColumns: uniqueMissing,
     usedColumns: uniqueUsed,
+  }
+}
+
+export async function fetchMarketPriceSeries(filters: ScreenerFilters) {
+  const featureColumns = await getAvailableColumns(
+    "gold_saudi_equity_daily_features"
+  )
+  const symbolColumns = await getAvailableColumns("saudi_equity_symbols")
+
+  const missingColumns: string[] = []
+  const usedColumns: string[] = []
+
+  const priceColumn = featureColumns.has("close")
+    ? "close"
+    : featureColumns.has("adjusted_close")
+    ? "adjusted_close"
+    : null
+  if (!priceColumn) {
+    missingColumns.push("close")
+    return {
+      series: [] as MarketSeriesPoint[],
+      missingColumns: Array.from(new Set(missingColumns)),
+      usedColumns,
+    }
+  }
+  usedColumns.push(priceColumn)
+
+  const hasNameEn = symbolColumns.has("name_en")
+  const hasNameAr = symbolColumns.has("name_ar")
+  const hasSector = symbolColumns.has("sector")
+  const hasMarket = symbolColumns.has("market")
+  const hasIsActive = symbolColumns.has("is_active")
+
+  if (!hasNameEn) missingColumns.push("name_en")
+  if (!hasNameAr) missingColumns.push("name_ar")
+  if (!hasSector) missingColumns.push("sector")
+  if (!hasMarket) missingColumns.push("market")
+  if (!hasIsActive) missingColumns.push("is_active")
+  if (hasNameEn) usedColumns.push("name_en")
+  if (hasNameAr) usedColumns.push("name_ar")
+  if (hasSector) usedColumns.push("sector")
+  if (hasMarket) usedColumns.push("market")
+  if (hasIsActive) usedColumns.push("is_active")
+
+  const where: string[] = ["g.trade_date BETWEEN $1 AND $2"]
+  const params: Array<string | string[] | number | boolean> = [
+    filters.start,
+    filters.end,
+  ]
+
+  if (filters.symbols?.length) {
+    params.push(filters.symbols)
+    where.push(`g.symbol = ANY($${params.length})`)
+  }
+
+  if (filters.sectors?.length) {
+    if (hasSector) {
+      params.push(filters.sectors)
+      where.push(`s.sector = ANY($${params.length})`)
+    } else {
+      missingColumns.push("sector")
+    }
+  }
+
+  if (filters.markets?.length) {
+    if (hasMarket) {
+      params.push(filters.markets)
+      where.push(`s.market = ANY($${params.length})`)
+    } else {
+      missingColumns.push("market")
+    }
+  }
+
+  if (filters.activeOnly) {
+    if (hasIsActive) {
+      where.push("s.is_active = true")
+    } else {
+      missingColumns.push("is_active")
+    }
+  }
+
+  if (filters.name) {
+    const search = `%${filters.name}%`
+    params.push(search)
+    if (hasNameEn && hasNameAr) {
+      where.push(
+        `(s.name_en ILIKE $${params.length} OR s.name_ar ILIKE $${params.length} OR g.symbol ILIKE $${params.length})`
+      )
+    } else if (hasNameEn) {
+      where.push(
+        `(s.name_en ILIKE $${params.length} OR g.symbol ILIKE $${params.length})`
+      )
+    } else if (hasNameAr) {
+      where.push(
+        `(s.name_ar ILIKE $${params.length} OR g.symbol ILIKE $${params.length})`
+      )
+    } else {
+      where.push(`g.symbol ILIKE $${params.length}`)
+      missingColumns.push("name_en")
+      missingColumns.push("name_ar")
+    }
+  }
+
+  const result = await query<{
+    trade_date: string
+    avg_close: number | null
+    symbol_count: number
+  }>(
+    `
+    SELECT
+      to_char(g.trade_date, 'YYYY-MM-DD') as trade_date,
+      AVG(g.${priceColumn})::double precision as avg_close,
+      COUNT(DISTINCT g.symbol)::int as symbol_count
+    FROM public.gold_saudi_equity_daily_features g
+    LEFT JOIN public.saudi_equity_symbols s
+      ON g.symbol = s.symbol
+    WHERE ${where.join(" AND ")}
+    GROUP BY g.trade_date
+    ORDER BY g.trade_date ASC
+  `,
+    params
+  )
+
+  const series = result.rows.map((row) => ({
+    trade_date: row.trade_date,
+    avg_close: toNumber(row.avg_close),
+    symbol_count:
+      Number.isFinite(Number(row.symbol_count)) && Number(row.symbol_count) > 0
+        ? Number(row.symbol_count)
+        : 0,
+  }))
+
+  return {
+    series,
+    missingColumns: Array.from(new Set(missingColumns)),
+    usedColumns: Array.from(new Set(usedColumns)),
   }
 }
 

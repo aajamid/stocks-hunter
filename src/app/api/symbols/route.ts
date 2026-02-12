@@ -8,8 +8,13 @@ export async function GET() {
     return NextResponse.json(data)
   } catch (error) {
     console.error("symbols api error", error)
+    const detail = error instanceof Error ? error.message : undefined
     return NextResponse.json(
-      { error: "Failed to load symbols metadata." },
+      {
+        error: detail
+          ? `Failed to load symbols metadata. ${detail}`
+          : "Failed to load symbols metadata.",
+      },
       { status: 500 }
     )
   }
