@@ -87,9 +87,9 @@ export function FiltersSidebar({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="14">14 days</SelectItem>
-              <SelectItem value="21">21 days</SelectItem>
-              <SelectItem value="28">28 days</SelectItem>
+              <SelectItem value="14">14 business days</SelectItem>
+              <SelectItem value="21">21 business days</SelectItem>
+              <SelectItem value="28">28 business days</SelectItem>
             </SelectContent>
           </Select>
         </div>

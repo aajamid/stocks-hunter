@@ -18,10 +18,34 @@ import type { ScreenerResponse, SymbolMeta } from "@/lib/types"
 
 const toDateString = (date: Date) => date.toISOString().slice(0, 10)
 
+const isSaudiBusinessDay = (date: Date) => {
+  const day = date.getDay()
+  return day !== 5 && day !== 6
+}
+
+const moveToPreviousSaudiBusinessDay = (date: Date) => {
+  const result = new Date(date)
+  while (!isSaudiBusinessDay(result)) {
+    result.setDate(result.getDate() - 1)
+  }
+  return result
+}
+
+const subtractSaudiBusinessDays = (date: Date, businessDays: number) => {
+  const result = new Date(date)
+  let remaining = businessDays
+  while (remaining > 0) {
+    result.setDate(result.getDate() - 1)
+    if (isSaudiBusinessDay(result)) {
+      remaining -= 1
+    }
+  }
+  return result
+}
+
 const resolveRollingDateRange = (rangeDays: 14 | 21 | 28) => {
-  const end = new Date()
-  const start = new Date(end)
-  start.setDate(start.getDate() - (rangeDays - 1))
+  const end = moveToPreviousSaudiBusinessDay(new Date())
+  const start = subtractSaudiBusinessDays(end, rangeDays - 1)
   return {
     start: toDateString(start),
     end: toDateString(end),
