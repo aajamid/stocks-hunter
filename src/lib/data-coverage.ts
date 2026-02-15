@@ -3,8 +3,8 @@ import { getAvailableColumns } from "@/lib/columns"
 import { query } from "@/lib/db"
 
 const COVERAGE_TTL_MS = 24 * 60 * 60 * 1000
-const TARGET_BUSINESS_DAYS = 28
-const CACHE_KEY = `coverage:${TARGET_BUSINESS_DAYS}bd`
+const COVERAGE_RETRY_TTL_MS = 5 * 60 * 1000
+const DEFAULT_TARGET_BUSINESS_DAYS = 28
 
 type CoverageIssue = {
   symbol: string
@@ -14,7 +14,7 @@ type CoverageIssue = {
 export type CoverageReport = {
   start: string
   end: string
-  targetBusinessDays: number
+  targetBusinessDays: 14 | 21 | 28
   missingBeforeCount: number
   missingAfterCount: number
   backfillRowsInserted: number
@@ -37,8 +37,8 @@ const moveToPreviousSaudiBusinessDay = (date: Date) => {
   return result
 }
 
-const lastSaudiBusinessDayWindow = (count: number) => {
-  const endDate = moveToPreviousSaudiBusinessDay(new Date())
+const lastSaudiBusinessDayWindow = (count: number, endDateInput: Date) => {
+  const endDate = moveToPreviousSaudiBusinessDay(endDateInput)
   const dates: Date[] = []
   const cursor = new Date(endDate)
 
@@ -54,6 +54,48 @@ const lastSaudiBusinessDayWindow = (count: number) => {
     start: toDateString(dates[0]),
     end: toDateString(dates[dates.length - 1]),
   }
+}
+
+const normalizeRangeDays = (value: number): 14 | 21 | 28 =>
+  value === 14 || value === 21 || value === 28
+    ? value
+    : DEFAULT_TARGET_BUSINESS_DAYS
+
+async function getLatestAvailableTradeDate() {
+  let result
+  try {
+    result = await query<{ latest_trade_date: Date | string | null }>(
+      `
+      SELECT MAX(trade_date) as latest_trade_date
+      FROM (
+        SELECT trade_date FROM public.gold_saudi_equity_daily_features
+        UNION ALL
+        SELECT trade_date FROM public.saudi_equity_ohlcv_daily
+      ) t
+    `,
+      []
+    )
+  } catch {
+    result = await query<{ latest_trade_date: Date | string | null }>(
+      `
+      SELECT MAX(trade_date) as latest_trade_date
+      FROM public.gold_saudi_equity_daily_features
+    `,
+      []
+    )
+  }
+
+  const rawValue = result.rows[0]?.latest_trade_date
+  if (!rawValue) {
+    return moveToPreviousSaudiBusinessDay(new Date())
+  }
+
+  const parsed = new Date(rawValue)
+  if (Number.isNaN(parsed.getTime())) {
+    return moveToPreviousSaudiBusinessDay(new Date())
+  }
+
+  return moveToPreviousSaudiBusinessDay(parsed)
 }
 
 async function getMissingCoverage(
@@ -140,13 +182,25 @@ async function tryBackfillFromOhlcv(start: string, end: string) {
   return Number(result.rows[0]?.inserted_count ?? 0)
 }
 
-export async function ensureRecentBusinessDayCoverage(): Promise<CoverageReport> {
-  const cached = getCache<CoverageReport>(CACHE_KEY)
+export async function ensureRecentBusinessDayCoverage(
+  targetBusinessDays: 14 | 21 | 28 = DEFAULT_TARGET_BUSINESS_DAYS
+): Promise<CoverageReport> {
+  const safeTargetBusinessDays = normalizeRangeDays(targetBusinessDays)
+  const cacheKey = `coverage:${safeTargetBusinessDays}bd`
+  const cached = getCache<CoverageReport>(cacheKey)
   if (cached) return cached
 
-  const { start, end } = lastSaudiBusinessDayWindow(TARGET_BUSINESS_DAYS)
+  const latestTradeDate = await getLatestAvailableTradeDate()
+  const { start, end } = lastSaudiBusinessDayWindow(
+    safeTargetBusinessDays,
+    latestTradeDate
+  )
 
-  const missingBefore = await getMissingCoverage(start, end, TARGET_BUSINESS_DAYS)
+  const missingBefore = await getMissingCoverage(
+    start,
+    end,
+    safeTargetBusinessDays
+  )
   let backfillRowsInserted = 0
   let backfillError: string | undefined
 
@@ -159,12 +213,16 @@ export async function ensureRecentBusinessDayCoverage(): Promise<CoverageReport>
     }
   }
 
-  const missingAfter = await getMissingCoverage(start, end, TARGET_BUSINESS_DAYS)
+  const missingAfter = await getMissingCoverage(
+    start,
+    end,
+    safeTargetBusinessDays
+  )
 
   const report: CoverageReport = {
     start,
     end,
-    targetBusinessDays: TARGET_BUSINESS_DAYS,
+    targetBusinessDays: safeTargetBusinessDays,
     missingBeforeCount: missingBefore.length,
     missingAfterCount: missingAfter.length,
     backfillRowsInserted,
@@ -172,7 +230,7 @@ export async function ensureRecentBusinessDayCoverage(): Promise<CoverageReport>
     ...(backfillError ? { backfillError } : {}),
   }
 
-  setCache(CACHE_KEY, report, COVERAGE_TTL_MS)
+  const ttlMs = missingAfter.length === 0 ? COVERAGE_TTL_MS : COVERAGE_RETRY_TTL_MS
+  setCache(cacheKey, report, ttlMs)
   return report
 }
-

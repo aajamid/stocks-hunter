@@ -40,15 +40,15 @@ function sortRows(
 
 export async function GET(request: NextRequest) {
   try {
-    const coverage = await ensureRecentBusinessDayCoverage()
+    const { searchParams } = new URL(request.url)
+    const rangeDays = parseRangeDays(searchParams)
+    const coverage = await ensureRecentBusinessDayCoverage(rangeDays)
     if (coverage.missingAfterCount > 0) {
       console.warn("data coverage warning", coverage)
     }
 
-    const { searchParams } = new URL(request.url)
     const filters = parseScreenerFilters(searchParams)
     const scenario = parseScenarioConfig(searchParams)
-    const rangeDays = parseRangeDays(searchParams)
     const { page, pageSize } = parsePagination(searchParams)
     const { sortBy, sortDir } = parseSort(searchParams)
     const format = parseFormat(searchParams)

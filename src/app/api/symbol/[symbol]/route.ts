@@ -16,12 +16,13 @@ export async function GET(
   context: { params: Promise<{ symbol: string }> }
 ) {
   try {
-    const coverage = await ensureRecentBusinessDayCoverage()
+    const { searchParams } = new URL(request.url)
+    const rangeDays = parseRangeDays(searchParams)
+    const coverage = await ensureRecentBusinessDayCoverage(rangeDays)
     if (coverage.missingAfterCount > 0) {
       console.warn("data coverage warning", coverage)
     }
 
-    const { searchParams } = new URL(request.url)
     const { symbol: rawSymbol } = await context.params
     const symbol = rawSymbol?.toUpperCase()
     if (!symbol) {
@@ -29,7 +30,6 @@ export async function GET(
     }
     const { start, end } = parseDateRange(searchParams)
     const scenario = parseScenarioConfig(searchParams)
-    const rangeDays = parseRangeDays(searchParams)
 
     const baseFilters = parseScreenerFilters(searchParams)
     const universeFilters = {
