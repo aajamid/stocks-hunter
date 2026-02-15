@@ -169,7 +169,7 @@ const toLabelDate = (value: string) => {
 export function DashboardScoreLineChart({
   series,
 }: DashboardScoreLineChartProps) {
-  const [chartType, setChartType] = useState<ChartType>("line")
+  const [chartType, setChartType] = useState<ChartType>("bar")
 
   const points = useMemo(() => {
     return series.map((point, index) => {
@@ -289,6 +289,8 @@ export function DashboardScoreLineChart({
                 tick={{ fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
+                interval={0}
+                minTickGap={0}
                 tickFormatter={toLabelDate}
               />
               <YAxis
@@ -327,6 +329,8 @@ export function DashboardScoreLineChart({
                 tick={{ fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
+                interval={0}
+                minTickGap={0}
                 tickFormatter={toLabelDate}
               />
               <YAxis
@@ -358,6 +362,8 @@ export function DashboardScoreLineChart({
                 tick={{ fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
+                interval={0}
+                minTickGap={0}
                 tickFormatter={toLabelDate}
               />
               <YAxis
