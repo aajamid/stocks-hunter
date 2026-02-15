@@ -204,6 +204,22 @@ export function DashboardPage() {
     router.push(`/symbol/${symbol}?${params.toString()}`)
   }
 
+  const handleToggleSymbolFilter = useCallback(
+    (symbol: string, checked: boolean) => {
+      setFilters((prev) => {
+        if (checked) {
+          if (prev.symbols.includes(symbol)) return prev
+          return { ...prev, symbols: [...prev.symbols, symbol] }
+        }
+        return {
+          ...prev,
+          symbols: prev.symbols.filter((item) => item !== symbol),
+        }
+      })
+    },
+    []
+  )
+
   const totalPages = screenerData
     ? Math.ceil(screenerData.total / screenerData.pageSize)
     : 1
@@ -328,6 +344,8 @@ export function DashboardPage() {
               sortDir={sortDir}
               onSortChange={onSortChange}
               onRowClick={handleRowClick}
+              selectedSymbols={filters.symbols}
+              onToggleSymbolFilter={handleToggleSymbolFilter}
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-xs text-muted-foreground">

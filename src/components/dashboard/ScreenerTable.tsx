@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Table,
   TableBody,
@@ -21,6 +22,8 @@ type ScreenerTableProps = {
   sortDir: "asc" | "desc"
   onSortChange: (field: string) => void
   onRowClick: (symbol: string) => void
+  selectedSymbols: string[]
+  onToggleSymbolFilter: (symbol: string, checked: boolean) => void
 }
 
 const headers: Array<{ key: string; label: string; align?: "right" | "left" }> =
@@ -41,6 +44,8 @@ export function ScreenerTable({
   sortDir,
   onSortChange,
   onRowClick,
+  selectedSymbols,
+  onToggleSymbolFilter,
 }: ScreenerTableProps) {
   const renderSortIcon = (key: string) => {
     if (sortBy !== key) return null
@@ -56,6 +61,9 @@ export function ScreenerTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/30">
+            <TableHead className="w-10 text-xs uppercase tracking-[0.2em]">
+              Filter
+            </TableHead>
             {headers.map((header) => (
               <TableHead
                 key={header.key}
@@ -97,6 +105,15 @@ export function ScreenerTable({
                 className="cursor-pointer hover:bg-muted/40"
                 onClick={() => onRowClick(row.symbol)}
               >
+                <TableCell onClick={(event) => event.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedSymbols.includes(row.symbol)}
+                    onCheckedChange={(checked) =>
+                      onToggleSymbolFilter(row.symbol, checked === true)
+                    }
+                    aria-label={`Filter by ${row.symbol}`}
+                  />
+                </TableCell>
                 <TableCell className="font-semibold">{row.symbol}</TableCell>
                 <TableCell className="max-w-[220px] truncate text-muted-foreground">
                   {row.name_en ?? "-"}
