@@ -57,7 +57,7 @@ export function MultiSelect({
         </p>
         <Button
           variant="ghost"
-          size="xs"
+          size="sm"
           onClick={() => onChange([])}
           disabled={selected.length === 0}
         >
@@ -72,14 +72,14 @@ export function MultiSelect({
         />
       ) : null}
       <Separator />
-      <div className="max-h-44 space-y-2 overflow-y-auto pr-1 text-sm">
+      <div className="max-h-52 space-y-2 overflow-y-auto pr-1 text-sm">
         {filtered.length === 0 ? (
           <p className="text-xs text-muted-foreground">No matches.</p>
         ) : null}
         {filtered.map((option) => (
           <label
             key={option.value}
-            className="flex cursor-pointer items-center justify-between gap-2 rounded-md px-1 py-1.5 text-sm text-foreground/90 hover:bg-accent/40"
+            className="flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-sm text-foreground/90 hover:bg-accent/40"
           >
             <span className="truncate">{option.label}</span>
             <Checkbox

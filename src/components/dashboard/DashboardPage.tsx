@@ -245,8 +245,8 @@ export function DashboardPage() {
   }, [filters.rangeDays])
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      <aside className="space-y-4">
+    <div className="grid gap-4 md:gap-6 lg:grid-cols-[320px_1fr]">
+      <aside className="space-y-4" aria-label="Dashboard filters">
         {symbolsData ? (
           <FiltersSidebar
             symbols={symbolsData.symbols}
@@ -259,9 +259,9 @@ export function DashboardPage() {
           <LoadingState label="Loading filters..." />
         )}
       </aside>
-      <main className="space-y-6">
+      <main className="space-y-4 md:space-y-6">
         <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <Card className="flex flex-col gap-4 border-border/70 bg-card/60 p-4">
+          <Card className="flex flex-col gap-4 border-border/70 bg-card/60 p-3 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -361,10 +361,11 @@ export function DashboardPage() {
                 {Math.min(page * pageSize, screenerData.total)} of{" "}
                 {screenerData.total} results
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                 <Button
                   size="sm"
                   variant="secondary"
+                  className="flex-1 sm:flex-none"
                   disabled={page <= 1}
                   onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
                 >
@@ -376,6 +377,7 @@ export function DashboardPage() {
                 <Button
                   size="sm"
                   variant="secondary"
+                  className="flex-1 sm:flex-none"
                   disabled={page >= totalPages}
                   onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
                 >
@@ -384,6 +386,7 @@ export function DashboardPage() {
                 <select
                   value={pageSize}
                   onChange={(event) => setPageSize(Number(event.target.value))}
+                  aria-label="Rows per page"
                   className="rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-xs text-foreground"
                 >
                   {[25, 50, 100].map((size) => (

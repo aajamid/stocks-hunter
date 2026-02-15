@@ -12,9 +12,9 @@ type AppShellProps = {
 
 export function AppShell({ title, subtitle, children }: AppShellProps) {
   return (
-    <div className="min-h-screen px-6 pb-10 pt-6 text-foreground">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
+    <div className="min-h-screen px-4 pb-8 pt-4 text-foreground sm:px-6 sm:pb-10 sm:pt-6">
+      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <div className="mb-2">
             <Image
               src="/autad-logo-white.png"
@@ -28,17 +28,22 @@ export function AppShell({ title, subtitle, children }: AppShellProps) {
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Saudi Stocks Hunter
           </p>
-          <h1 className="text-3xl font-semibold">{title}</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl">{title}</h1>
           {subtitle ? (
-            <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              {subtitle}
+            </p>
           ) : null}
         </div>
-        <nav className="flex items-center gap-2">
+        <nav
+          className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end"
+          aria-label="Primary navigation"
+        >
           <ThemeToggle />
-          <Button asChild variant="secondary" size="sm">
+          <Button asChild variant="secondary" size="sm" className="flex-1 sm:flex-none">
             <Link href="/">Dashboard</Link>
           </Button>
-          <Button asChild variant="ghost" size="sm">
+          <Button asChild variant="ghost" size="sm" className="flex-1 sm:flex-none">
             <Link href="/scenarios">Scenarios</Link>
           </Button>
         </nav>

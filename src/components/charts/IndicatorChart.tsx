@@ -27,18 +27,18 @@ const labelMap = {
 
 export function IndicatorChart({ data, indicator }: IndicatorChartProps) {
   return (
-    <Card className="h-[260px] w-full border-border/70 bg-card/60 p-4">
+    <Card className="h-[240px] w-full border-border/70 bg-card/60 p-3 sm:h-[260px] sm:p-4">
       <div>
         <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
           Indicator
         </p>
         <h3 className="text-lg font-semibold">{labelMap[indicator]}</h3>
       </div>
-      <div className="mt-4 h-[180px]">
+      <div className="mt-3 h-[160px] sm:mt-4 sm:h-[180px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
-            <XAxis dataKey="trade_date" tick={{ fontSize: 11 }} />
+            <XAxis dataKey="trade_date" tick={{ fontSize: 11 }} minTickGap={24} />
             <YAxis
               tick={{ fontSize: 11 }}
               tickFormatter={(value) =>

@@ -57,7 +57,7 @@ export function FiltersSidebar({
 
   return (
     <div className="flex flex-col gap-4">
-      <Card className="space-y-4 border-border/70 bg-card/50 p-4">
+      <Card className="space-y-4 border-border/70 bg-card/50 p-3 sm:p-4">
         <div className="space-y-2">
           <Label htmlFor="range-mode">Range</Label>
           <Select
@@ -113,6 +113,7 @@ export function FiltersSidebar({
           </div>
           <Switch
             checked={filters.activeOnly}
+            aria-label="Active companies only"
             onCheckedChange={(value) =>
               onChange({ ...filters, activeOnly: value })
             }

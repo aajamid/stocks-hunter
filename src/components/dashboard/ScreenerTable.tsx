@@ -89,8 +89,11 @@ export function ScreenerTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/60">
-      <Table>
+    <div className="rounded-2xl border border-border/70 bg-card/60">
+      <div className="px-3 pt-2 text-[11px] text-muted-foreground sm:hidden">
+        Swipe horizontally to view all columns.
+      </div>
+      <Table className="min-w-[980px]" aria-label="Screener results table">
         <TableHeader>
           <TableRow className="bg-muted/30">
             <TableHead className="w-10 text-xs uppercase tracking-[0.2em]">
@@ -112,7 +115,7 @@ export function ScreenerTable({
                   <Button
                     variant="ghost"
                     size="xs"
-                    className="h-7 gap-1 px-2 text-xs uppercase tracking-[0.2em]"
+                    className="h-8 gap-1 px-2 text-xs uppercase tracking-[0.2em]"
                     title={getHeaderTooltip(header.key, rangeDays)}
                     onClick={() => onSortChange(header.key)}
                   >
@@ -134,6 +137,14 @@ export function ScreenerTable({
                 key={row.symbol}
                 className="cursor-pointer hover:bg-muted/40"
                 onClick={() => onRowClick(row.symbol)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    onRowClick(row.symbol)
+                  }
+                }}
+                tabIndex={0}
+                aria-label={`Open ${row.symbol} details`}
               >
                 <TableCell onClick={(event) => event.stopPropagation()}>
                   <Checkbox

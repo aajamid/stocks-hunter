@@ -48,7 +48,7 @@ export function ScenarioPanel({ scenario, onChange, onSave }: ScenarioPanelProps
   }, [scenario])
 
   return (
-    <Card className="flex flex-col gap-4 border-border/70 bg-card/60 p-4">
+    <Card className="flex flex-col gap-4 border-border/70 bg-card/60 p-3 sm:p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -86,6 +86,7 @@ export function ScenarioPanel({ scenario, onChange, onSave }: ScenarioPanelProps
               min={0}
               max={2}
               step={0.05}
+              aria-label={config.label}
               onValueChange={(value) => handleWeightChange(config.key, value[0])}
             />
           </div>
@@ -98,6 +99,7 @@ export function ScenarioPanel({ scenario, onChange, onSave }: ScenarioPanelProps
           type="number"
           step="0.001"
           min="0.0001"
+          aria-label="Volatility cap"
           value={scenario.thresholds.volatilityCap ?? ""}
           onChange={(event) => handleVolatilityCap(event.target.value)}
           placeholder="e.g. 0.025"

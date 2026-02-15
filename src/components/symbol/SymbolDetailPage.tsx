@@ -98,13 +98,11 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
     fetchDetails()
   }, [fetchDetails])
 
-  const headerTitle = data?.meta?.name_en
-    ? `${symbol} · ${data.meta.name_en}`
-    : symbol
+  const headerTitle = data?.meta?.name_en ? `${symbol} - ${data.meta.name_en}` : symbol
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
             Symbol Detail
@@ -112,26 +110,28 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
           <h2 className="text-2xl font-semibold">{headerTitle}</h2>
           <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
             <span>{data?.meta?.sector ?? "Sector n/a"}</span>
-            <span>•</span>
+            <span>-</span>
             <span>{data?.meta?.market ?? "Market n/a"}</span>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="ghost" size="sm">
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
+          <Button asChild variant="ghost" size="sm" className="w-full sm:w-auto">
             <Link href="/">Back to Screener</Link>
           </Button>
-          <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/60 px-3 py-2">
+          <div className="grid w-full gap-2 rounded-lg border border-border/60 bg-card/60 px-3 py-2 sm:w-auto sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
             <Input
               type="date"
               value={start}
+              aria-label="Start date"
               onChange={(event) => setStart(event.target.value)}
             />
             <Input
               type="date"
               value={end}
+              aria-label="End date"
               onChange={(event) => setEnd(event.target.value)}
             />
-            <Button size="sm" variant="secondary" onClick={fetchDetails}>
+            <Button size="sm" variant="secondary" className="w-full sm:w-auto" onClick={fetchDetails}>
               Refresh
             </Button>
           </div>
@@ -236,7 +236,7 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
               setIndicator(value as "daily_return" | "momentum_5d" | "volatility_5d")
             }
           >
-            <TabsList className="bg-muted/40">
+            <TabsList className="w-full overflow-x-auto bg-muted/40">
               <TabsTrigger value="daily_return">Daily Return</TabsTrigger>
               <TabsTrigger value="momentum_5d">Momentum 5D</TabsTrigger>
               <TabsTrigger value="volatility_5d">Volatility 5D</TabsTrigger>
