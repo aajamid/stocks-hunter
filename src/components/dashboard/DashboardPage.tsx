@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { FlaskConical, SlidersHorizontal, X } from "lucide-react"
 
 import { ErrorBanner } from "@/components/common/ErrorBanner"
 import { EmptyState } from "@/components/common/EmptyState"
@@ -89,6 +90,8 @@ export function DashboardPage() {
   const [pageSize, setPageSize] = useState(50)
   const [sortBy, setSortBy] = useState("score")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [mobileScenarioOpen, setMobileScenarioOpen] = useState(false)
 
   const dateRange = useMemo(
     () => resolveRollingDateRange(filters.rangeDays),
@@ -182,6 +185,19 @@ export function DashboardPage() {
     setPage(1)
   }, [filters, scenario, sortBy, sortDir, pageSize])
 
+  useEffect(() => {
+    if (mobileFiltersOpen || mobileScenarioOpen) {
+      document.body.style.overflow = "hidden"
+      return () => {
+        document.body.style.overflow = ""
+      }
+    }
+    document.body.style.overflow = ""
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [mobileFiltersOpen, mobileScenarioOpen])
+
   const onSortChange = (field: string) => {
     if (sortBy === field) {
       setSortDir(sortDir === "asc" ? "desc" : "asc")
@@ -246,7 +262,73 @@ export function DashboardPage() {
 
   return (
     <div className="grid gap-4 md:gap-6 lg:grid-cols-[320px_1fr]">
-      <aside className="space-y-4" aria-label="Dashboard filters">
+      {mobileFiltersOpen ? (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 lg:hidden"
+          onClick={() => setMobileFiltersOpen(false)}
+          aria-hidden="true"
+        >
+          <aside
+            className="absolute left-0 top-0 h-full w-[92vw] max-w-sm overflow-y-auto border-r border-border/60 bg-background p-4"
+            aria-label="Dashboard filters"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Filters</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setMobileFiltersOpen(false)}
+                aria-label="Close filters"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            {symbolsData ? (
+              <FiltersSidebar
+                symbols={symbolsData.symbols}
+                sectors={symbolsData.sectors}
+                markets={symbolsData.markets}
+                filters={filters}
+                onChange={setFilters}
+              />
+            ) : (
+              <LoadingState label="Loading filters..." />
+            )}
+          </aside>
+        </div>
+      ) : null}
+
+      {mobileScenarioOpen ? (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 lg:hidden"
+          onClick={() => setMobileScenarioOpen(false)}
+          aria-hidden="true"
+        >
+          <aside
+            className="absolute right-0 top-0 h-full w-[92vw] max-w-sm overflow-y-auto border-l border-border/60 bg-background p-4"
+            aria-label="Scenario settings"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Scenario Weights</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setMobileScenarioOpen(false)}
+                aria-label="Close scenario settings"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <ScenarioPanel scenario={scenario} onChange={setScenario} />
+          </aside>
+        </div>
+      ) : null}
+
+      <aside className="hidden space-y-4 lg:block" aria-label="Dashboard filters">
         {symbolsData ? (
           <FiltersSidebar
             symbols={symbolsData.symbols}
@@ -260,6 +342,26 @@ export function DashboardPage() {
         )}
       </aside>
       <main className="space-y-4 md:space-y-6">
+        <div className="grid grid-cols-2 gap-2 lg:hidden">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="w-full"
+            onClick={() => setMobileFiltersOpen(true)}
+          >
+            <SlidersHorizontal className="mr-1 h-4 w-4" />
+            Filters
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="w-full"
+            onClick={() => setMobileScenarioOpen(true)}
+          >
+            <FlaskConical className="mr-1 h-4 w-4" />
+            Scenario
+          </Button>
+        </div>
         <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
           <Card className="flex flex-col gap-4 border-border/70 bg-card/60 p-3 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -331,7 +433,9 @@ export function DashboardPage() {
               </div>
             ) : null}
           </Card>
-          <ScenarioPanel scenario={scenario} onChange={setScenario} />
+          <div className="hidden lg:block">
+            <ScenarioPanel scenario={scenario} onChange={setScenario} />
+          </div>
         </div>
 
         {error ? <ErrorBanner message={error} /> : null}
