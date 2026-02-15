@@ -47,6 +47,12 @@ const getHeaderTooltip = (key: string, rangeDays: 14 | 21 | 28) => {
   if (key === "avg_volatility_5d") {
     return `Volatility ${rangeDays}D formula: sample standard deviation of daily returns over selected range.`
   }
+  if (key === "latest_rsi") {
+    return "Latest RSI value as of the most recent trade date in the selected range."
+  }
+  if (key === "latest_apx") {
+    return "Latest APX value as of the most recent trade date in the selected range (uses ADX if APX is unavailable)."
+  }
   if (key === "score") {
     return `Score formula: 100 - (down days x (100 / ${rangeDays})). Color bands: 70-100 green, 50-69 yellow, below 50 red.`
   }
@@ -76,6 +82,8 @@ export function ScreenerTable({
         label: `Volatility ${rangeDays}D`,
         align: "right",
       },
+      { key: "latest_rsi", label: "RSI", align: "right" },
+      { key: "latest_apx", label: "APX", align: "right" },
       { key: "score", label: "Score", align: "right" },
     ]
 
@@ -151,6 +159,18 @@ export function ScreenerTable({
                     ? compactFormatter.format(row.avg_volatility_5d)
                     : "-"}
                 </div>
+                <div className="text-muted-foreground">RSI</div>
+                <div className="text-right">
+                  {row.latest_rsi !== null && row.latest_rsi !== undefined
+                    ? numberFormatter.format(row.latest_rsi)
+                    : "-"}
+                </div>
+                <div className="text-muted-foreground">APX</div>
+                <div className="text-right">
+                  {row.latest_apx !== null && row.latest_apx !== undefined
+                    ? numberFormatter.format(row.latest_apx)
+                    : "-"}
+                </div>
               </div>
               <Button
                 variant="secondary"
@@ -168,7 +188,7 @@ export function ScreenerTable({
         <div className="px-3 pt-2 text-[11px] text-muted-foreground lg:hidden">
           Swipe horizontally to view all columns.
         </div>
-        <Table className="min-w-[980px]" aria-label="Screener results table">
+        <Table className="min-w-[1180px]" aria-label="Screener results table">
           <TableHeader>
             <TableRow className="bg-muted/30">
               <TableHead className="w-10 text-xs uppercase tracking-[0.2em]">
@@ -184,7 +204,7 @@ export function ScreenerTable({
                   }
                 >
                   {header.key === "symbol" ||
-                  header.key === "latest_close" ||
+                  header.key.startsWith("latest_") ||
                   header.key.includes("avg") ||
                   header.key === "score" ? (
                     <Button
@@ -272,6 +292,24 @@ export function ScreenerTable({
                             title={`Sample standard deviation of daily returns over ${rangeDays} business days.`}
                           >
                             {compactFormatter.format(row.avg_volatility_5d)}
+                          </span>
+                        )
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row.latest_rsi !== null && row.latest_rsi !== undefined
+                      ? (
+                          <span title="Latest RSI value in selected range.">
+                            {numberFormatter.format(row.latest_rsi)}
+                          </span>
+                        )
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row.latest_apx !== null && row.latest_apx !== undefined
+                      ? (
+                          <span title="Latest APX value in selected range (or ADX fallback).">
+                            {numberFormatter.format(row.latest_apx)}
                           </span>
                         )
                       : "-"}

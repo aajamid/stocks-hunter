@@ -80,6 +80,18 @@ export function parseScreenerFilters(params: URLSearchParams): ScreenerFilters {
   const markets = parseList(params.get("markets"))
   const name = params.get("name")?.trim()
   const activeOnly = params.get("activeOnly") === "true"
+  let scoreMin = parseOptionalScore(params.get("scoreMin"))
+  let scoreMax = parseOptionalScore(params.get("scoreMax"))
+
+  if (
+    typeof scoreMin === "number" &&
+    typeof scoreMax === "number" &&
+    scoreMin > scoreMax
+  ) {
+    const temp = scoreMin
+    scoreMin = scoreMax
+    scoreMax = temp
+  }
 
   return {
     start,
@@ -89,6 +101,8 @@ export function parseScreenerFilters(params: URLSearchParams): ScreenerFilters {
     markets: markets.length ? markets : undefined,
     name: name || undefined,
     activeOnly,
+    scoreMin,
+    scoreMax,
   }
 }
 
@@ -137,6 +151,13 @@ function safeJson(value: string) {
   } catch {
     return null
   }
+}
+
+function parseOptionalScore(value: string | null) {
+  if (!value) return undefined
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return undefined
+  return Math.max(-100, Math.min(100, parsed))
 }
 
 function toDateString(date: Date) {

@@ -168,6 +168,20 @@ export async function fetchScreenerRows(
   const hasVolumeSpike = featureColumns.has("volume_spike_ratio")
   const hasIntraday = featureColumns.has("intraday_strength")
   const hasDirection = featureColumns.has("direction_signal")
+  const rsiColumn = featureColumns.has("rsi")
+    ? "rsi"
+    : featureColumns.has("rsi_14")
+    ? "rsi_14"
+    : null
+  const apxColumn = featureColumns.has("apx")
+    ? "apx"
+    : featureColumns.has("apx_14")
+    ? "apx_14"
+    : featureColumns.has("adx")
+    ? "adx"
+    : featureColumns.has("adx_14")
+    ? "adx_14"
+    : null
 
   if (!hasDailyReturn) missingColumns.push("daily_return")
   if (hasDailyReturn) usedColumns.push("daily_return")
@@ -181,6 +195,10 @@ export async function fetchScreenerRows(
   if (hasIntraday) usedColumns.push("intraday_strength")
   if (!hasDirection) missingColumns.push("direction_signal")
   if (hasDirection) usedColumns.push("direction_signal")
+  if (!rsiColumn) missingColumns.push("rsi")
+  if (rsiColumn) usedColumns.push(rsiColumn)
+  if (!apxColumn) missingColumns.push("apx")
+  if (apxColumn) usedColumns.push(apxColumn)
 
   const hasNameEn = symbolColumns.has("name_en")
   const hasNameAr = symbolColumns.has("name_ar")
@@ -233,6 +251,12 @@ export async function fetchScreenerRows(
     hasIntraday
       ? "AVG(g.intraday_strength) as avg_intraday_strength"
       : "NULL::double precision as avg_intraday_strength",
+    rsiColumn
+      ? `(ARRAY_AGG(g.${rsiColumn} ORDER BY g.trade_date DESC))[1] as latest_rsi`
+      : "NULL::double precision as latest_rsi",
+    apxColumn
+      ? `(ARRAY_AGG(g.${apxColumn} ORDER BY g.trade_date DESC))[1] as latest_apx`
+      : "NULL::double precision as latest_apx",
     hasDirection
       ? "AVG(CASE WHEN g.direction_signal = 1 THEN 1 ELSE 0 END) as fraction_up"
       : "NULL::double precision as fraction_up",
@@ -440,6 +464,8 @@ export async function fetchScreenerRows(
         movement?.rangeVolatility ?? toNumber(row.avg_volatility_5d),
       avg_volume_spike_ratio: toNumber(row.avg_volume_spike_ratio),
       avg_intraday_strength: toNumber(row.avg_intraday_strength),
+      latest_rsi: toNumber(row.latest_rsi),
+      latest_apx: toNumber(row.latest_apx),
       fraction_up: toNumber(row.fraction_up),
     }
   })

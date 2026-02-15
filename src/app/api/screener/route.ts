@@ -21,6 +21,8 @@ const sortableFields = new Set([
   "avg_momentum_5d",
   "avg_volatility_5d",
   "avg_volume_spike_ratio",
+  "latest_rsi",
+  "latest_apx",
 ])
 
 function sortRows(
@@ -64,7 +66,24 @@ export async function GET(request: NextRequest) {
     } = screenerRowsResult
 
     const scored = scoreRows(rows, scenario, rangeDays)
-    const sorted = sortRows(scored, sortBy, sortDir)
+    const scoreFiltered = scored.filter((row) => {
+      if (
+        typeof filters.scoreMin === "number" &&
+        Number.isFinite(filters.scoreMin) &&
+        row.score < filters.scoreMin
+      ) {
+        return false
+      }
+      if (
+        typeof filters.scoreMax === "number" &&
+        Number.isFinite(filters.scoreMax) &&
+        row.score > filters.scoreMax
+      ) {
+        return false
+      }
+      return true
+    })
+    const sorted = sortRows(scoreFiltered, sortBy, sortDir)
 
     const total = sorted.length
     const start = (page - 1) * pageSize
@@ -94,6 +113,8 @@ export async function GET(request: NextRequest) {
         { key: "avg_daily_return", label: "avg_daily_return" },
         { key: "avg_momentum_5d", label: "avg_momentum_5d" },
         { key: "avg_volatility_5d", label: "avg_volatility_5d" },
+        { key: "latest_rsi", label: "latest_rsi" },
+        { key: "latest_apx", label: "latest_apx" },
         { key: "score", label: "score" },
       ])
 

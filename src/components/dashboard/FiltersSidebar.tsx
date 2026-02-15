@@ -19,6 +19,8 @@ export type FilterState = {
   rangeMode: "rolling"
   rangeDays: 14 | 21 | 28
   name: string
+  scoreMin: string
+  scoreMax: string
   symbols: string[]
   sectors: string[]
   markets: string[]
@@ -103,6 +105,32 @@ export function FiltersSidebar({
             }
             placeholder="e.g. SABIC"
           />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-2">
+            <Label htmlFor="score-min">Score min</Label>
+            <Input
+              id="score-min"
+              value={filters.scoreMin}
+              onChange={(event) =>
+                onChange({ ...filters, scoreMin: event.target.value })
+              }
+              placeholder="-100"
+              inputMode="decimal"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="score-max">Score max</Label>
+            <Input
+              id="score-max"
+              value={filters.scoreMax}
+              onChange={(event) =>
+                onChange({ ...filters, scoreMax: event.target.value })
+              }
+              placeholder="100"
+              inputMode="decimal"
+            />
+          </div>
         </div>
         <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
           <div>

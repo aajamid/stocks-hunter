@@ -15,6 +15,8 @@ export type ScreenerFilters = {
   markets?: string[]
   name?: string
   activeOnly?: boolean
+  scoreMin?: number
+  scoreMax?: number
 }
 
 export type ScreenerRow = {
@@ -31,6 +33,8 @@ export type ScreenerRow = {
   avg_volatility_5d?: number | null
   avg_volume_spike_ratio?: number | null
   avg_intraday_strength?: number | null
+  latest_rsi?: number | null
+  latest_apx?: number | null
   fraction_up?: number | null
   up_days?: number | null
   down_days?: number | null
