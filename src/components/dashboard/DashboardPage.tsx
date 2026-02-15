@@ -240,6 +240,10 @@ export function DashboardPage() {
     return "All Companies"
   }, [filters.name, screenerData])
 
+  const avgScoreTitle = useMemo(() => {
+    return `Universe average score. Score formula per symbol: 100 - (down days x (100 / ${filters.rangeDays})).`
+  }, [filters.rangeDays])
+
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
       <aside className="space-y-4">
@@ -298,7 +302,7 @@ export function DashboardPage() {
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Avg Score
                 </p>
-                <p className="text-lg font-semibold">
+                <p className="text-lg font-semibold" title={avgScoreTitle}>
                   {summaryStats?.avgScore !== null &&
                   summaryStats?.avgScore !== undefined
                     ? summaryStats.avgScore.toFixed(2)
@@ -309,7 +313,10 @@ export function DashboardPage() {
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Avg Return
                 </p>
-                <p className="text-lg font-semibold">
+                <p
+                  className="text-lg font-semibold"
+                  title="Average of daily returns over selected range."
+                >
                   {summaryStats?.avgReturnValue !== null &&
                   summaryStats?.avgReturnValue !== undefined
                     ? percentFormatter.format(summaryStats.avgReturnValue)

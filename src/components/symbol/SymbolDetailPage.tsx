@@ -39,6 +39,16 @@ type SymbolDetailPageProps = {
 
 const toDateString = (date: Date) => date.toISOString().slice(0, 10)
 
+const getScoreBadgeClass = (score: number) => {
+  if (score >= 70) {
+    return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+  }
+  if (score >= 50) {
+    return "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+  }
+  return "bg-destructive/20 text-destructive"
+}
+
 export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProps) {
   const initialSearch = useMemo(() => new URLSearchParams(initialParams), [
     initialParams,
@@ -152,11 +162,8 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
                 </div>
                 {data.score ? (
                   <Badge
-                    className={
-                      data.score.score < 0
-                        ? "bg-destructive/20 text-destructive"
-                        : "bg-emerald-500/15 text-emerald-300"
-                    }
+                    className={getScoreBadgeClass(data.score.score)}
+                    title={`Score = 100 - (down days x (100 / ${data.score.score_inputs.rangeDays})). Color bands: 70-100 green, 50-69 yellow, below 50 red.`}
                   >
                     Score {data.score.score.toFixed(2)}
                   </Badge>
@@ -187,7 +194,10 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                     Avg Daily Return
                   </p>
-                  <p className="text-lg font-semibold">
+                  <p
+                    className="text-lg font-semibold"
+                    title="Average of daily returns over selected range."
+                  >
                     {data.summary.avgDailyReturn !== null
                       ? percentFormatter.format(data.summary.avgDailyReturn)
                       : "-"}
@@ -197,7 +207,10 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
                   <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                     Volatility
                   </p>
-                  <p className="text-lg font-semibold">
+                  <p
+                    className="text-lg font-semibold"
+                    title="Sample standard deviation of daily returns over selected range."
+                  >
                     {data.summary.volatility !== null
                       ? percentFormatter.format(data.summary.volatility)
                       : "-"}
@@ -240,7 +253,10 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
                   </p>
                   <h3 className="text-lg font-semibold">Contribution breakdown</h3>
                 </div>
-                <Badge className="bg-muted/40 text-muted-foreground">
+                <Badge
+                  className={getScoreBadgeClass(data.score.score)}
+                  title={`Score = 100 - (down days x (100 / ${data.score.score_inputs.rangeDays})). Color bands: 70-100 green, 50-69 yellow, below 50 red.`}
+                >
                   Final score {data.score.score.toFixed(2)}
                 </Badge>
               </div>

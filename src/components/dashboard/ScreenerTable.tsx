@@ -27,6 +27,32 @@ type ScreenerTableProps = {
   onToggleSymbolFilter: (symbol: string, checked: boolean) => void
 }
 
+const getScoreBadgeClass = (score: number) => {
+  if (score >= 70) {
+    return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+  }
+  if (score >= 50) {
+    return "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+  }
+  return "bg-destructive/20 text-destructive"
+}
+
+const getHeaderTooltip = (key: string, rangeDays: 14 | 21 | 28) => {
+  if (key === "avg_daily_return") {
+    return "Average of daily returns over selected range: AVG((close_t - close_t-1) / close_t-1)."
+  }
+  if (key === "avg_momentum_5d") {
+    return `Momentum ${rangeDays}D formula: (latest close - first close) / first close over selected range.`
+  }
+  if (key === "avg_volatility_5d") {
+    return `Volatility ${rangeDays}D formula: sample standard deviation of daily returns over selected range.`
+  }
+  if (key === "score") {
+    return `Score formula: 100 - (down days x (100 / ${rangeDays})). Color bands: 70-100 green, 50-69 yellow, below 50 red.`
+  }
+  return undefined
+}
+
 export function ScreenerTable({
   rows,
   sortBy,
@@ -87,6 +113,7 @@ export function ScreenerTable({
                     variant="ghost"
                     size="xs"
                     className="h-7 gap-1 px-2 text-xs uppercase tracking-[0.2em]"
+                    title={getHeaderTooltip(header.key, rangeDays)}
                     onClick={() => onSortChange(header.key)}
                   >
                     {header.label}
@@ -101,10 +128,7 @@ export function ScreenerTable({
         </TableHeader>
         <TableBody>
           {rows.map((row) => {
-            const scoreBadge =
-              row.score < 0
-                ? "bg-destructive/20 text-destructive"
-                : "bg-emerald-500/15 text-emerald-300"
+            const scoreBadge = getScoreBadgeClass(row.score)
             return (
               <TableRow
                 key={row.symbol}
@@ -135,23 +159,44 @@ export function ScreenerTable({
                 <TableCell className="text-right">
                   {row.avg_daily_return !== null &&
                   row.avg_daily_return !== undefined
-                    ? percentFormatter.format(row.avg_daily_return)
+                    ? (
+                        <span title="Average of daily returns over selected range.">
+                          {percentFormatter.format(row.avg_daily_return)}
+                        </span>
+                      )
                     : "-"}
                 </TableCell>
                 <TableCell className="text-right">
                   {row.avg_momentum_5d !== null &&
                   row.avg_momentum_5d !== undefined
-                    ? compactFormatter.format(row.avg_momentum_5d)
+                    ? (
+                        <span
+                          title={`(latest close - first close) / first close over ${rangeDays} business days.`}
+                        >
+                          {compactFormatter.format(row.avg_momentum_5d)}
+                        </span>
+                      )
                     : "-"}
                 </TableCell>
                 <TableCell className="text-right">
                   {row.avg_volatility_5d !== null &&
                   row.avg_volatility_5d !== undefined
-                    ? compactFormatter.format(row.avg_volatility_5d)
+                    ? (
+                        <span
+                          title={`Sample standard deviation of daily returns over ${rangeDays} business days.`}
+                        >
+                          {compactFormatter.format(row.avg_volatility_5d)}
+                        </span>
+                      )
                     : "-"}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Badge className={scoreBadge}>{row.score.toFixed(2)}</Badge>
+                  <Badge
+                    className={scoreBadge}
+                    title={`Score = 100 - (down days x (100 / ${rangeDays})). Color bands: 70-100 green, 50-69 yellow, below 50 red.`}
+                  >
+                    {row.score.toFixed(2)}
+                  </Badge>
                 </TableCell>
               </TableRow>
             )
