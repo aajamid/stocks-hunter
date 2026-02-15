@@ -325,7 +325,13 @@ export async function fetchScreenerRows(
 
   const movementBySymbol = new Map<
     string,
-    { upDays: number; downDays: number; netDirectionDays: number }
+    {
+      upDays: number
+      downDays: number
+      netDirectionDays: number
+      avgDailyReturn: number | null
+      rangeVolatility: number | null
+    }
   >()
 
   if (priceColumn) {
@@ -334,18 +340,30 @@ export async function fetchScreenerRows(
       up_days: number | null
       down_days: number | null
       net_direction_days: number | null
+      avg_daily_return_dyn: number | null
+      range_volatility_dyn: number | null
     }>(
       `
       WITH priced AS (
         SELECT
           g.symbol,
-          g.trade_date,
           g.${priceColumn} as price_value,
           LAG(g.${priceColumn}) OVER (PARTITION BY g.symbol ORDER BY g.trade_date) as prev_price
         FROM public.gold_saudi_equity_daily_features g
         LEFT JOIN public.saudi_equity_symbols s
           ON g.symbol = s.symbol
         WHERE ${scopedWhere.join(" AND ")}
+      ),
+      returns AS (
+        SELECT
+          symbol,
+          price_value,
+          prev_price,
+          CASE
+            WHEN price_value IS NULL OR prev_price IS NULL OR prev_price = 0 THEN NULL
+            ELSE (price_value - prev_price) / prev_price
+          END as day_return
+        FROM priced
       )
       SELECT
         symbol,
@@ -371,7 +389,10 @@ export async function fetchScreenerRows(
             ELSE 0
           END
         )::int as net_direction_days
-      FROM priced
+        ,
+        AVG(day_return)::double precision as avg_daily_return_dyn,
+        STDDEV_SAMP(day_return)::double precision as range_volatility_dyn
+      FROM returns
       GROUP BY symbol
     `,
       scopedParams
@@ -386,37 +407,42 @@ export async function fetchScreenerRows(
         netDirectionDays: Number.isFinite(Number(row.net_direction_days))
           ? Number(row.net_direction_days)
           : 0,
+        avgDailyReturn: toNumber(row.avg_daily_return_dyn),
+        rangeVolatility: toNumber(row.range_volatility_dyn),
       })
     })
   }
 
-  const rows = result.rows.map((row) => ({
-    ...(movementBySymbol.get(row.symbol)
-      ? {
-          up_days: movementBySymbol.get(row.symbol)!.upDays,
-          down_days: movementBySymbol.get(row.symbol)!.downDays,
-          net_direction_days: movementBySymbol.get(row.symbol)!.netDirectionDays,
-        }
-      : {
-          up_days: 0,
-          down_days: 0,
-          net_direction_days: 0,
-        }),
-    symbol: row.symbol,
-    name_en: row.name_en ?? null,
-    name_ar: row.name_ar ?? null,
-    sector: row.sector ?? null,
-    market: row.market ?? null,
-    is_active: toBoolean(row.is_active),
-    first_close: toNumber(row.first_close),
-    latest_close: toNumber(row.latest_close),
-    avg_daily_return: toNumber(row.avg_daily_return),
-    avg_momentum_5d: toNumber(row.avg_momentum_5d),
-    avg_volatility_5d: toNumber(row.avg_volatility_5d),
-    avg_volume_spike_ratio: toNumber(row.avg_volume_spike_ratio),
-    avg_intraday_strength: toNumber(row.avg_intraday_strength),
-    fraction_up: toNumber(row.fraction_up),
-  }))
+  const rows = result.rows.map((row) => {
+    const movement = movementBySymbol.get(row.symbol)
+    const firstClose = toNumber(row.first_close)
+    const latestClose = toNumber(row.latest_close)
+    const rangeMomentum =
+      firstClose !== null && latestClose !== null && firstClose !== 0
+        ? (latestClose - firstClose) / firstClose
+        : null
+
+    return {
+      up_days: movement?.upDays ?? 0,
+      down_days: movement?.downDays ?? 0,
+      net_direction_days: movement?.netDirectionDays ?? 0,
+      symbol: row.symbol,
+      name_en: row.name_en ?? null,
+      name_ar: row.name_ar ?? null,
+      sector: row.sector ?? null,
+      market: row.market ?? null,
+      is_active: toBoolean(row.is_active),
+      first_close: firstClose,
+      latest_close: latestClose,
+      avg_daily_return: movement?.avgDailyReturn ?? toNumber(row.avg_daily_return),
+      avg_momentum_5d: rangeMomentum ?? toNumber(row.avg_momentum_5d),
+      avg_volatility_5d:
+        movement?.rangeVolatility ?? toNumber(row.avg_volatility_5d),
+      avg_volume_spike_ratio: toNumber(row.avg_volume_spike_ratio),
+      avg_intraday_strength: toNumber(row.avg_intraday_strength),
+      fraction_up: toNumber(row.fraction_up),
+    }
+  })
 
   const uniqueMissing = Array.from(new Set(missingColumns))
   const uniqueUsed = Array.from(new Set(usedColumns))

@@ -20,33 +20,39 @@ type ScreenerTableProps = {
   rows: ScreenerRowScored[]
   sortBy: string
   sortDir: "asc" | "desc"
+  rangeDays: 14 | 21 | 28
   onSortChange: (field: string) => void
   onRowClick: (symbol: string) => void
   selectedSymbols: string[]
   onToggleSymbolFilter: (symbol: string, checked: boolean) => void
 }
 
-const headers: Array<{ key: string; label: string; align?: "right" | "left" }> =
-  [
-    { key: "symbol", label: "Symbol" },
-    { key: "name_en", label: "Company" },
-    { key: "sector", label: "Sector" },
-    { key: "latest_close", label: "Latest Close", align: "right" },
-    { key: "avg_daily_return", label: "Avg Return", align: "right" },
-    { key: "avg_momentum_5d", label: "Momentum 5D", align: "right" },
-    { key: "avg_volatility_5d", label: "Volatility 5D", align: "right" },
-    { key: "score", label: "Score", align: "right" },
-  ]
-
 export function ScreenerTable({
   rows,
   sortBy,
   sortDir,
+  rangeDays,
   onSortChange,
   onRowClick,
   selectedSymbols,
   onToggleSymbolFilter,
 }: ScreenerTableProps) {
+  const headers: Array<{ key: string; label: string; align?: "right" | "left" }> =
+    [
+      { key: "symbol", label: "Symbol" },
+      { key: "name_en", label: "Company" },
+      { key: "sector", label: "Sector" },
+      { key: "latest_close", label: "Latest Close", align: "right" },
+      { key: "avg_daily_return", label: "Avg Return", align: "right" },
+      { key: "avg_momentum_5d", label: `Momentum ${rangeDays}D`, align: "right" },
+      {
+        key: "avg_volatility_5d",
+        label: `Volatility ${rangeDays}D`,
+        align: "right",
+      },
+      { key: "score", label: "Score", align: "right" },
+    ]
+
   const renderSortIcon = (key: string) => {
     if (sortBy !== key) return null
     return sortDir === "asc" ? (

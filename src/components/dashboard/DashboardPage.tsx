@@ -73,7 +73,7 @@ export function DashboardPage() {
   const router = useRouter()
   const [filters, setFilters] = useState<FilterState>({
     rangeMode: "rolling",
-    rangeDays: 28,
+    rangeDays: 14,
     name: "",
     symbols: [],
     sectors: [],
@@ -342,6 +342,7 @@ export function DashboardPage() {
               rows={screenerData.rows}
               sortBy={sortBy}
               sortDir={sortDir}
+              rangeDays={filters.rangeDays}
               onSortChange={onSortChange}
               onRowClick={handleRowClick}
               selectedSymbols={filters.symbols}
