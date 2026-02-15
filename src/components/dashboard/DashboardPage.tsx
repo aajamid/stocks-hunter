@@ -76,8 +76,7 @@ export function DashboardPage() {
     rangeMode: "rolling",
     rangeDays: 14,
     name: "",
-    scoreMin: "",
-    scoreMax: "",
+    scoreRange: [0, 100],
     symbols: [],
     sectors: [],
     markets: [],
@@ -135,14 +134,9 @@ export function DashboardPage() {
       if (filters.markets.length)
         params.set("markets", filters.markets.join(","))
       if (filters.activeOnly) params.set("activeOnly", "true")
-      const scoreMin = Number(filters.scoreMin)
-      if (filters.scoreMin.trim() && Number.isFinite(scoreMin)) {
-        params.set("scoreMin", String(scoreMin))
-      }
-      const scoreMax = Number(filters.scoreMax)
-      if (filters.scoreMax.trim() && Number.isFinite(scoreMax)) {
-        params.set("scoreMax", String(scoreMax))
-      }
+      const [scoreMin, scoreMax] = filters.scoreRange
+      if (scoreMin > 0) params.set("scoreMin", String(scoreMin))
+      if (scoreMax < 100) params.set("scoreMax", String(scoreMax))
       params.set("page", String(page))
       params.set("pageSize", String(pageSize))
       params.set("sortBy", sortBy)

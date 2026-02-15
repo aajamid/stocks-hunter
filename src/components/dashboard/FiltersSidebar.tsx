@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import type { SymbolMeta } from "@/lib/types"
 
@@ -19,8 +20,7 @@ export type FilterState = {
   rangeMode: "rolling"
   rangeDays: 14 | 21 | 28
   name: string
-  scoreMin: string
-  scoreMax: string
+  scoreRange: [number, number]
   symbols: string[]
   sectors: string[]
   markets: string[]
@@ -106,31 +106,32 @@ export function FiltersSidebar({
             placeholder="e.g. SABIC"
           />
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-2">
-            <Label htmlFor="score-min">Score min</Label>
-            <Input
-              id="score-min"
-              value={filters.scoreMin}
-              onChange={(event) =>
-                onChange({ ...filters, scoreMin: event.target.value })
-              }
-              placeholder="-100"
-              inputMode="decimal"
-            />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="score-range">Score range</Label>
+            <span className="text-xs text-muted-foreground">
+              {filters.scoreRange[0]} - {filters.scoreRange[1]}
+            </span>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="score-max">Score max</Label>
-            <Input
-              id="score-max"
-              value={filters.scoreMax}
-              onChange={(event) =>
-                onChange({ ...filters, scoreMax: event.target.value })
-              }
-              placeholder="100"
-              inputMode="decimal"
-            />
-          </div>
+          <Slider
+            id="score-range"
+            value={filters.scoreRange}
+            min={0}
+            max={100}
+            step={1}
+            onValueChange={(value) => {
+              if (value.length !== 2) return
+              const min = Math.max(0, Math.min(100, Math.round(value[0])))
+              const max = Math.max(0, Math.min(100, Math.round(value[1])))
+              onChange({
+                ...filters,
+                scoreRange: [Math.min(min, max), Math.max(min, max)],
+              })
+            }}
+          />
+          <p className="text-xs text-muted-foreground">
+            Filter results by score band.
+          </p>
         </div>
         <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
           <div>
