@@ -42,7 +42,7 @@ export async function GET(
 
     const [seriesData, screenerData] = await Promise.all([
       fetchSymbolSeries(symbol, start, end),
-      fetchScreenerRows(universeFilters),
+      fetchScreenerRows(universeFilters, rangeDays),
     ])
 
     const summary = computeSummary(seriesData.series)

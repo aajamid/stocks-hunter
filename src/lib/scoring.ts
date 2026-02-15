@@ -61,9 +61,10 @@ export function scoreRows(
         : upDays - downDays
 
     const upScore = upDays * pointPerDay
-    const downScore = -downDays * pointPerDay
-    const total = upScore + downScore
-    const score = clamp(Number(total.toFixed(3)), -100, 100)
+    const downPenalty = downDays * pointPerDay
+    const downScore = -downPenalty
+    const total = 100 + downScore
+    const score = clamp(Number(total.toFixed(3)), 0, 100)
 
     return {
       ...row,
@@ -84,4 +85,3 @@ export function scoreRows(
     }
   })
 }
-

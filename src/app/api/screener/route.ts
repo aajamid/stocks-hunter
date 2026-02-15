@@ -54,8 +54,8 @@ export async function GET(request: NextRequest) {
     const format = parseFormat(searchParams)
 
     const [screenerRowsResult, marketSeriesResult] = await Promise.all([
-      fetchScreenerRows(filters),
-      fetchMarketPriceSeries(filters),
+      fetchScreenerRows(filters, rangeDays),
+      fetchMarketPriceSeries(filters, rangeDays),
     ])
     const {
       rows,

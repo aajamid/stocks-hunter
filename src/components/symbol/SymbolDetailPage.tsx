@@ -264,12 +264,12 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
                 ))}
               </div>
               <div className="mt-4 text-xs text-muted-foreground">
-                Score logic: for each selected business day, add{" "}
-                {numberFormatter.format(data.score.score_components.pointPerDay)} if
-                close increased vs previous day, and deduct the same amount if it
-                decreased. Current range is {data.score.score_inputs.rangeDays} days
-                with {data.score.score_inputs.upDays} up days and{" "}
-                {data.score.score_inputs.downDays} down days.
+                Score logic: start from 100 points, then deduct{" "}
+                {numberFormatter.format(data.score.score_components.pointPerDay)} for
+                each down day (close below previous day close). Current range is{" "}
+                {data.score.score_inputs.rangeDays} days with{" "}
+                {data.score.score_inputs.downDays} down days and{" "}
+                {data.score.score_inputs.upDays} up days.
               </div>
             </Card>
           ) : null}

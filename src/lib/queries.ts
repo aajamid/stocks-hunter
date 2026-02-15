@@ -25,6 +25,45 @@ const toBoolean = (value: unknown) => {
   return null
 }
 
+type QueryParam = string | string[] | number | boolean
+
+async function applyRollingWindow(
+  where: string[],
+  params: QueryParam[],
+  rangeDays?: 14 | 21 | 28
+) {
+  if (!rangeDays) {
+    return { where, params }
+  }
+
+  const dateResult = await query<{ start_date: string | null }>(
+    `
+    WITH selected_dates AS (
+      SELECT DISTINCT g.trade_date
+      FROM public.gold_saudi_equity_daily_features g
+      LEFT JOIN public.saudi_equity_symbols s
+        ON g.symbol = s.symbol
+      WHERE ${where.join(" AND ")}
+      ORDER BY g.trade_date DESC
+      LIMIT $${params.length + 1}
+    )
+    SELECT to_char(MIN(trade_date), 'YYYY-MM-DD') as start_date
+    FROM selected_dates
+  `,
+    [...params, rangeDays]
+  )
+
+  const startDate = dateResult.rows[0]?.start_date
+  if (!startDate) {
+    return { where, params }
+  }
+
+  return {
+    where: [...where, `g.trade_date >= $${params.length + 1}`],
+    params: [...params, startDate],
+  }
+}
+
 export async function fetchSymbolsList() {
   const cacheKey = "symbols:list"
   const cached = getCache<{
@@ -89,7 +128,10 @@ export async function fetchSymbolsList() {
   return payload
 }
 
-export async function fetchScreenerRows(filters: ScreenerFilters) {
+export async function fetchScreenerRows(
+  filters: ScreenerFilters,
+  rangeDays?: 14 | 21 | 28
+) {
   const featureColumns = await getAvailableColumns(
     "gold_saudi_equity_daily_features"
   )
@@ -196,11 +238,12 @@ export async function fetchScreenerRows(filters: ScreenerFilters) {
       : "NULL::double precision as fraction_up",
   ]
 
-  const where: string[] = ["g.trade_date BETWEEN $1 AND $2"]
-  const params: Array<string | string[] | number | boolean> = [
-    filters.start,
-    filters.end,
-  ]
+  const where: string[] = rangeDays
+    ? ["g.trade_date <= $1"]
+    : ["g.trade_date BETWEEN $1 AND $2"]
+  const params: QueryParam[] = rangeDays
+    ? [filters.end]
+    : [filters.start, filters.end]
 
   if (filters.symbols?.length) {
     params.push(filters.symbols)
@@ -255,6 +298,11 @@ export async function fetchScreenerRows(filters: ScreenerFilters) {
     }
   }
 
+  const {
+    where: scopedWhere,
+    params: scopedParams,
+  } = await applyRollingWindow(where, params, rangeDays)
+
   const groupBy = ["g.symbol"]
   if (hasNameEn) groupBy.push("s.name_en")
   if (hasNameAr) groupBy.push("s.name_ar")
@@ -268,11 +316,11 @@ export async function fetchScreenerRows(filters: ScreenerFilters) {
     FROM public.gold_saudi_equity_daily_features g
     LEFT JOIN public.saudi_equity_symbols s
       ON g.symbol = s.symbol
-    WHERE ${where.join(" AND ")}
+    WHERE ${scopedWhere.join(" AND ")}
     GROUP BY ${groupBy.join(", ")}
     ORDER BY g.symbol
   `,
-    params
+    scopedParams
   )
 
   const movementBySymbol = new Map<
@@ -297,7 +345,7 @@ export async function fetchScreenerRows(filters: ScreenerFilters) {
         FROM public.gold_saudi_equity_daily_features g
         LEFT JOIN public.saudi_equity_symbols s
           ON g.symbol = s.symbol
-        WHERE ${where.join(" AND ")}
+        WHERE ${scopedWhere.join(" AND ")}
       )
       SELECT
         symbol,
@@ -326,7 +374,7 @@ export async function fetchScreenerRows(filters: ScreenerFilters) {
       FROM priced
       GROUP BY symbol
     `,
-      params
+      scopedParams
     )
 
     movementResult.rows.forEach((row) => {
@@ -379,7 +427,10 @@ export async function fetchScreenerRows(filters: ScreenerFilters) {
   }
 }
 
-export async function fetchMarketPriceSeries(filters: ScreenerFilters) {
+export async function fetchMarketPriceSeries(
+  filters: ScreenerFilters,
+  rangeDays?: 14 | 21 | 28
+) {
   const featureColumns = await getAvailableColumns(
     "gold_saudi_equity_daily_features"
   )
@@ -430,11 +481,12 @@ export async function fetchMarketPriceSeries(filters: ScreenerFilters) {
   if (hasMarket) usedColumns.push("market")
   if (hasIsActive) usedColumns.push("is_active")
 
-  const where: string[] = ["g.trade_date BETWEEN $1 AND $2"]
-  const params: Array<string | string[] | number | boolean> = [
-    filters.start,
-    filters.end,
-  ]
+  const where: string[] = rangeDays
+    ? ["g.trade_date <= $1"]
+    : ["g.trade_date BETWEEN $1 AND $2"]
+  const params: QueryParam[] = rangeDays
+    ? [filters.end]
+    : [filters.start, filters.end]
 
   if (filters.symbols?.length) {
     params.push(filters.symbols)
@@ -489,6 +541,11 @@ export async function fetchMarketPriceSeries(filters: ScreenerFilters) {
     }
   }
 
+  const {
+    where: scopedWhere,
+    params: scopedParams,
+  } = await applyRollingWindow(where, params, rangeDays)
+
   const result = await query<{
     trade_date: string
     avg_open: number | null
@@ -520,11 +577,11 @@ export async function fetchMarketPriceSeries(filters: ScreenerFilters) {
     FROM public.gold_saudi_equity_daily_features g
     LEFT JOIN public.saudi_equity_symbols s
       ON g.symbol = s.symbol
-    WHERE ${where.join(" AND ")}
+    WHERE ${scopedWhere.join(" AND ")}
     GROUP BY g.trade_date
     ORDER BY g.trade_date ASC
   `,
-    params
+    scopedParams
   )
 
   const series = result.rows.map((row) => ({
