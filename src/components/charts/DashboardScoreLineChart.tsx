@@ -60,8 +60,8 @@ function CustomTooltip({
   if (!point) return null
 
   return (
-    <div className="rounded-lg border border-white/10 bg-zinc-900/95 px-3 py-2 text-xs shadow-lg shadow-black/30">
-      <p className="text-base font-semibold text-white">
+    <div className="rounded-lg border border-border/80 bg-popover/95 px-3 py-2 text-xs text-popover-foreground shadow-lg">
+      <p className="text-base font-semibold">
         {point.close !== null
           ? numberFormatter.format(point.close)
           : "-"}
@@ -76,8 +76,8 @@ function CustomTooltip({
       <p
         className={
           point.dayChangePct !== null && point.dayChangePct < 0
-            ? "text-red-300"
-            : "text-emerald-300"
+            ? "text-red-500"
+            : "text-emerald-500"
         }
       >
         {point.dayChangePct !== null
@@ -299,7 +299,7 @@ export function DashboardScoreLineChart({
               />
               <Tooltip
                 content={<CustomTooltip />}
-                cursor={{ stroke: "rgba(255,255,255,0.35)", strokeWidth: 1 }}
+                cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
               />
               <Area
                 type="monotone"
@@ -312,7 +312,7 @@ export function DashboardScoreLineChart({
                 activeDot={{
                   r: 4,
                   strokeWidth: 2,
-                  stroke: "#ffffff",
+                  stroke: "var(--background)",
                   fill: "#14b8a6",
                 }}
               />
@@ -337,7 +337,7 @@ export function DashboardScoreLineChart({
               />
               <Tooltip
                 content={<CustomTooltip />}
-                cursor={{ fill: "rgba(255,255,255,0.06)" }}
+                cursor={{ fill: "var(--muted)" }}
               />
               <Bar dataKey="close" radius={[4, 4, 0, 0]}>
                 {points.map((point) => (
@@ -368,7 +368,7 @@ export function DashboardScoreLineChart({
               />
               <Tooltip
                 content={<CustomTooltip />}
-                cursor={{ stroke: "rgba(255,255,255,0.35)", strokeWidth: 1 }}
+                cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
               />
               <Bar dataKey="wickBase" stackId="candles" fill="transparent" isAnimationActive={false} />
               <Bar

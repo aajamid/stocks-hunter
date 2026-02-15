@@ -2,6 +2,23 @@ import type { Metadata } from "next"
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google"
 import "./globals.css"
 
+const themeBootScript = `
+(() => {
+  try {
+    const storedTheme = localStorage.getItem("theme")
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+    const theme = storedTheme === "light" || storedTheme === "dark"
+      ? storedTheme
+      : prefersDark
+        ? "dark"
+        : "light"
+    document.documentElement.classList.toggle("dark", theme === "dark")
+  } catch {
+    document.documentElement.classList.add("dark")
+  }
+})()
+`
+
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
   subsets: ["latin"],
@@ -23,7 +40,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body
         className={`${spaceGrotesk.variable} ${jetBrainsMono.variable} min-h-screen bg-background text-foreground antialiased`}
       >

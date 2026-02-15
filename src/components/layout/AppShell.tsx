@@ -1,6 +1,7 @@
 import Image from "next/image"
 import Link from "next/link"
 
+import { ThemeToggle } from "@/components/layout/ThemeToggle"
 import { Button } from "@/components/ui/button"
 
 type AppShellProps = {
@@ -21,7 +22,7 @@ export function AppShell({ title, subtitle, children }: AppShellProps) {
               width={200}
               height={78}
               priority
-              className="h-9 w-auto"
+              className="h-9 w-auto invert transition dark:invert-0"
             />
           </div>
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -33,6 +34,7 @@ export function AppShell({ title, subtitle, children }: AppShellProps) {
           ) : null}
         </div>
         <nav className="flex items-center gap-2">
+          <ThemeToggle />
           <Button asChild variant="secondary" size="sm">
             <Link href="/">Dashboard</Link>
           </Button>
