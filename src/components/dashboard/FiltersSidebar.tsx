@@ -21,6 +21,9 @@ export type FilterState = {
   rangeDays: 14 | 21 | 28
   name: string
   scoreRange: [number, number]
+  minPrice: string
+  minAvgVolume: string
+  minAvgTurnover: string
   symbols: string[]
   sectors: string[]
   markets: string[]
@@ -132,6 +135,44 @@ export function FiltersSidebar({
           <p className="text-xs text-muted-foreground">
             Filter results by score band.
           </p>
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="min-price">Min price</Label>
+            <Input
+              id="min-price"
+              value={filters.minPrice}
+              onChange={(event) =>
+                onChange({ ...filters, minPrice: event.target.value })
+              }
+              placeholder="e.g. 5"
+              inputMode="decimal"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="min-volume">Min avg volume</Label>
+            <Input
+              id="min-volume"
+              value={filters.minAvgVolume}
+              onChange={(event) =>
+                onChange({ ...filters, minAvgVolume: event.target.value })
+              }
+              placeholder="e.g. 100000"
+              inputMode="numeric"
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="min-turnover">Min avg turnover</Label>
+          <Input
+            id="min-turnover"
+            value={filters.minAvgTurnover}
+            onChange={(event) =>
+              onChange({ ...filters, minAvgTurnover: event.target.value })
+            }
+            placeholder="e.g. 5000000"
+            inputMode="decimal"
+          />
         </div>
         <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
           <div>

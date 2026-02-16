@@ -82,6 +82,11 @@ export function parseScreenerFilters(params: URLSearchParams): ScreenerFilters {
   const activeOnly = params.get("activeOnly") === "true"
   let scoreMin = parseOptionalScore(params.get("scoreMin"))
   let scoreMax = parseOptionalScore(params.get("scoreMax"))
+  const minPrice = parseOptionalPositiveNumber(params.get("minPrice"))
+  const minAvgVolume = parseOptionalPositiveNumber(params.get("minAvgVolume"))
+  const minAvgTurnover = parseOptionalPositiveNumber(
+    params.get("minAvgTurnover")
+  )
 
   if (
     typeof scoreMin === "number" &&
@@ -103,6 +108,9 @@ export function parseScreenerFilters(params: URLSearchParams): ScreenerFilters {
     activeOnly,
     scoreMin,
     scoreMax,
+    minPrice,
+    minAvgVolume,
+    minAvgTurnover,
   }
 }
 
@@ -118,7 +126,10 @@ export function parsePagination(params: URLSearchParams) {
   }
 }
 
-export function parseSort(params: URLSearchParams) {
+export function parseSort(params: URLSearchParams): {
+  sortBy: string
+  sortDir: "asc" | "desc"
+} {
   const sortBy = params.get("sortBy") ?? "score"
   const sortDir = params.get("sortDir") === "asc" ? "asc" : "desc"
   return { sortBy, sortDir }
@@ -158,6 +169,13 @@ function parseOptionalScore(value: string | null) {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return undefined
   return Math.max(-100, Math.min(100, parsed))
+}
+
+function parseOptionalPositiveNumber(value: string | null) {
+  if (!value) return undefined
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) return undefined
+  return parsed
 }
 
 function toDateString(date: Date) {

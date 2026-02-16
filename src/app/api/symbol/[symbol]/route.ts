@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 
 import { ensureRecentBusinessDayCoverage } from "@/lib/data-coverage"
 import { computeSummary } from "@/lib/metrics"
-import { fetchScreenerRows, fetchSymbolSeries } from "@/lib/queries"
+import { fetchScreenerRows, fetchSymbolEvents, fetchSymbolSeries } from "@/lib/queries"
 import { scoreRows } from "@/lib/scoring"
 import {
   parseDateRange,
@@ -44,6 +44,7 @@ export async function GET(
       fetchSymbolSeries(symbol, start, end),
       fetchScreenerRows(universeFilters, rangeDays),
     ])
+    const eventsData = await fetchSymbolEvents(symbol, start, end)
 
     const summary = computeSummary(seriesData.series)
     const scoredRows = scoreRows(screenerData.rows, scenario, rangeDays)
@@ -53,14 +54,29 @@ export async function GET(
       symbol,
       meta: seriesData.meta,
       series: seriesData.series,
+      events: eventsData.events,
       summary,
       score: scoreRow,
       missingColumns: Array.from(
-        new Set([...seriesData.missingColumns, ...screenerData.missingColumns])
+        new Set([
+          ...seriesData.missingColumns,
+          ...screenerData.missingColumns,
+          ...eventsData.missingColumns,
+        ])
       ),
       usedColumns: Array.from(
-        new Set([...seriesData.usedColumns, ...screenerData.usedColumns])
+        new Set([
+          ...seriesData.usedColumns,
+          ...screenerData.usedColumns,
+          ...eventsData.usedColumns,
+        ])
       ),
+      dataQuality: {
+        coverageStart: coverage.start,
+        coverageEnd: coverage.end,
+        missingSymbols: coverage.missingAfterCount,
+        backfillRowsInserted: coverage.backfillRowsInserted,
+      },
     })
   } catch (error) {
     console.error("symbol api error", error)

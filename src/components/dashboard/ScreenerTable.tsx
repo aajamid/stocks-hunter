@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowDown, ArrowUp } from "lucide-react"
+import { ArrowDown, ArrowUp, Star } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,8 @@ type ScreenerTableProps = {
   onRowClick: (symbol: string) => void
   selectedSymbols: string[]
   onToggleSymbolFilter: (symbol: string, checked: boolean) => void
+  watchlistSymbols: string[]
+  onToggleWatchlist: (symbol: string) => void
 }
 
 const getScoreBadgeClass = (score: number) => {
@@ -47,6 +49,12 @@ const getHeaderTooltip = (key: string, rangeDays: 14 | 21 | 28) => {
   if (key === "avg_volatility_5d") {
     return `Volatility ${rangeDays}D formula: sample standard deviation of daily returns over selected range.`
   }
+  if (key === "avg_volume") {
+    return "Average traded volume over selected range."
+  }
+  if (key === "avg_turnover") {
+    return "Average turnover over selected range."
+  }
   if (key === "latest_rsi") {
     return "Latest RSI value as of the most recent trade date in the selected range."
   }
@@ -68,6 +76,8 @@ export function ScreenerTable({
   onRowClick,
   selectedSymbols,
   onToggleSymbolFilter,
+  watchlistSymbols,
+  onToggleWatchlist,
 }: ScreenerTableProps) {
   const headers: Array<{ key: string; label: string; align?: "right" | "left" }> =
     [
@@ -82,6 +92,8 @@ export function ScreenerTable({
         label: `Volatility ${rangeDays}D`,
         align: "right",
       },
+      { key: "avg_volume", label: "Avg Volume", align: "right" },
+      { key: "avg_turnover", label: "Avg Turnover", align: "right" },
       { key: "latest_rsi", label: "RSI", align: "right" },
       { key: "latest_apx", label: "APX", align: "right" },
       { key: "score", label: "Score", align: "right" },
@@ -115,6 +127,24 @@ export function ScreenerTable({
                     }
                     aria-label={`Filter by ${row.symbol}`}
                   />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onToggleWatchlist(row.symbol)
+                    }}
+                    aria-label={`Toggle ${row.symbol} watchlist`}
+                  >
+                    <Star
+                      className={`h-4 w-4 ${
+                        watchlistSymbols.includes(row.symbol)
+                          ? "fill-amber-400 text-amber-400"
+                          : "text-muted-foreground"
+                      }`}
+                    />
+                  </Button>
                   <div>
                     <p className="text-sm font-semibold">{row.symbol}</p>
                     <p className="max-w-[220px] truncate text-xs text-muted-foreground">
@@ -124,7 +154,7 @@ export function ScreenerTable({
                 </div>
                 <Badge
                   className={scoreBadge}
-                  title={`Score = 100 - (down days x (100 / ${rangeDays})). Color bands: 70-100 green, 50-69 yellow, below 50 red.`}
+                  title={`Score = 100 - (down days x (100 / ${rangeDays})). Up days: ${row.score_inputs.upDays}, down days: ${row.score_inputs.downDays}, point/day: ${row.score_components.pointPerDay}.`}
                 >
                   {row.score.toFixed(2)}
                 </Badge>
@@ -159,6 +189,18 @@ export function ScreenerTable({
                     ? compactFormatter.format(row.avg_volatility_5d)
                     : "-"}
                 </div>
+                <div className="text-muted-foreground">Avg volume</div>
+                <div className="text-right">
+                  {row.avg_volume !== null && row.avg_volume !== undefined
+                    ? compactFormatter.format(row.avg_volume)
+                    : "-"}
+                </div>
+                <div className="text-muted-foreground">Avg turnover</div>
+                <div className="text-right">
+                  {row.avg_turnover !== null && row.avg_turnover !== undefined
+                    ? compactFormatter.format(row.avg_turnover)
+                    : "-"}
+                </div>
                 <div className="text-muted-foreground">RSI</div>
                 <div className="text-right">
                   {row.latest_rsi !== null && row.latest_rsi !== undefined
@@ -188,11 +230,14 @@ export function ScreenerTable({
         <div className="px-3 pt-2 text-[11px] text-muted-foreground lg:hidden">
           Swipe horizontally to view all columns.
         </div>
-        <Table className="min-w-[1180px]" aria-label="Screener results table">
+        <Table className="min-w-[1400px]" aria-label="Screener results table">
           <TableHeader>
             <TableRow className="bg-muted/30">
               <TableHead className="w-10 text-xs uppercase tracking-[0.2em]">
                 Filter
+              </TableHead>
+              <TableHead className="w-10 text-xs uppercase tracking-[0.2em]">
+                Watch
               </TableHead>
               {headers.map((header) => (
                 <TableHead
@@ -250,6 +295,23 @@ export function ScreenerTable({
                       aria-label={`Filter by ${row.symbol}`}
                     />
                   </TableCell>
+                  <TableCell onClick={(event) => event.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => onToggleWatchlist(row.symbol)}
+                      aria-label={`Toggle ${row.symbol} watchlist`}
+                    >
+                      <Star
+                        className={`h-4 w-4 ${
+                          watchlistSymbols.includes(row.symbol)
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                    </Button>
+                  </TableCell>
                   <TableCell className="font-semibold">{row.symbol}</TableCell>
                   <TableCell className="max-w-[220px] truncate text-muted-foreground">
                     {row.name_en ?? "-"}
@@ -297,6 +359,24 @@ export function ScreenerTable({
                       : "-"}
                   </TableCell>
                   <TableCell className="text-right">
+                    {row.avg_volume !== null && row.avg_volume !== undefined
+                      ? (
+                          <span title="Average traded volume across selected range.">
+                            {compactFormatter.format(row.avg_volume)}
+                          </span>
+                        )
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row.avg_turnover !== null && row.avg_turnover !== undefined
+                      ? (
+                          <span title="Average turnover across selected range.">
+                            {compactFormatter.format(row.avg_turnover)}
+                          </span>
+                        )
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
                     {row.latest_rsi !== null && row.latest_rsi !== undefined
                       ? (
                           <span title="Latest RSI value in selected range.">
@@ -317,7 +397,7 @@ export function ScreenerTable({
                   <TableCell className="text-right">
                     <Badge
                       className={scoreBadge}
-                      title={`Score = 100 - (down days x (100 / ${rangeDays})). Color bands: 70-100 green, 50-69 yellow, below 50 red.`}
+                      title={`Score = 100 - (down days x (100 / ${rangeDays})). Up days: ${row.score_inputs.upDays}, down days: ${row.score_inputs.downDays}, point/day: ${row.score_components.pointPerDay}.`}
                     >
                       {row.score.toFixed(2)}
                     </Badge>

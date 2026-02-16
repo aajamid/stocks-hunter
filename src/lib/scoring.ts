@@ -16,8 +16,13 @@ export const defaultScenario: ScenarioConfig = {
   },
 }
 
+type ScenarioConfigInput = {
+  weights?: Partial<ScenarioConfig["weights"]>
+  thresholds?: Partial<ScenarioConfig["thresholds"]>
+}
+
 export function applyScenarioDefaults(
-  config?: Partial<ScenarioConfig>
+  config?: ScenarioConfigInput
 ): ScenarioConfig {
   return {
     weights: {
@@ -39,7 +44,7 @@ export function applyScenarioDefaults(
 
 export function scoreRows(
   rows: ScreenerRow[],
-  _config?: Partial<ScenarioConfig>,
+  _config?: ScenarioConfigInput,
   rangeDays: 14 | 21 | 28 = 28
 ): ScreenerRowScored[] {
   const safeRangeDays = [14, 21, 28].includes(rangeDays) ? rangeDays : 28

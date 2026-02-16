@@ -13,12 +13,18 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { numberFormatter, percentFormatter } from "@/lib/format"
-import type { ScreenerRowScored, SeriesPoint, SymbolMeta } from "@/lib/types"
+import type {
+  ScreenerRowScored,
+  SeriesPoint,
+  SymbolEvent,
+  SymbolMeta,
+} from "@/lib/types"
 
 type SymbolDetailResponse = {
   symbol: string
   meta: SymbolMeta | null
   series: SeriesPoint[]
+  events: SymbolEvent[]
   summary: {
     latestClose: number | null
     firstClose: number | null
@@ -30,6 +36,12 @@ type SymbolDetailResponse = {
   score: ScreenerRowScored | null
   missingColumns: string[]
   usedColumns: string[]
+  dataQuality?: {
+    coverageStart: string | null
+    coverageEnd: string | null
+    missingSymbols: number
+    backfillRowsInserted: number
+  }
 }
 
 type SymbolDetailPageProps = {
@@ -143,6 +155,14 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
           Missing columns: {data.missingColumns.join(", ")}
         </div>
       ) : null}
+      {data?.dataQuality ? (
+        <div className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          Coverage window: {data.dataQuality.coverageStart ?? "-"} to{" "}
+          {data.dataQuality.coverageEnd ?? "-"} | Missing symbols in coverage:{" "}
+          {data.dataQuality.missingSymbols} | Backfilled rows:{" "}
+          {data.dataQuality.backfillRowsInserted}
+        </div>
+      ) : null}
 
       {error ? <ErrorBanner message={error} /> : null}
 
@@ -151,7 +171,7 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
       ) : data ? (
         <>
           <div className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
-            <PriceVolumeChart data={data.series} />
+            <PriceVolumeChart data={data.series} events={data.events} />
             <Card className="flex flex-col gap-4 border-border/70 bg-card/60 p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -243,6 +263,46 @@ export function SymbolDetailPage({ symbol, initialParams }: SymbolDetailPageProp
             </TabsList>
           </Tabs>
           <IndicatorChart data={data.series} indicator={indicator} />
+
+          <Card className="border-border/70 bg-card/60 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Event Layer
+                </p>
+                <h3 className="text-lg font-semibold">Corporate events</h3>
+              </div>
+              <Badge variant="secondary">{data.events.length} events</Badge>
+            </div>
+            <div className="mt-3 space-y-2">
+              {data.events.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No events found for this range.
+                </p>
+              ) : (
+                data.events.slice(0, 8).map((event, index) => (
+                  <div
+                    key={`${event.event_date}-${event.event_title ?? "event"}-${index}`}
+                    className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">
+                        {event.event_title ?? event.event_type ?? "Event"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {event.event_date}
+                      </span>
+                    </div>
+                    {event.description ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {event.description}
+                      </p>
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
 
           {data.score ? (
             <Card className="border-border/70 bg-card/60 p-4">

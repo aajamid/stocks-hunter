@@ -6,6 +6,7 @@ import type {
   ScreenerFilters,
   ScreenerRow,
   SeriesPoint,
+  SymbolEvent,
   SymbolMeta,
 } from "@/lib/types"
 
@@ -156,10 +157,17 @@ export async function fetchScreenerRows(
     : featureColumns.has("turnover")
     ? "turnover"
     : null
+  const avgVolumeColumn = featureColumns.has("volume") ? "volume" : null
+  const avgTurnoverColumn = featureColumns.has("turnover") ? "turnover" : null
   if (!volumeColumn) {
     missingColumns.push("volume")
   } else {
     usedColumns.push(volumeColumn)
+  }
+  if (!avgTurnoverColumn) {
+    missingColumns.push("turnover")
+  } else {
+    usedColumns.push(avgTurnoverColumn)
   }
 
   const hasDailyReturn = featureColumns.has("daily_return")
@@ -251,6 +259,12 @@ export async function fetchScreenerRows(
     hasIntraday
       ? "AVG(g.intraday_strength) as avg_intraday_strength"
       : "NULL::double precision as avg_intraday_strength",
+    avgVolumeColumn
+      ? `AVG(g.${avgVolumeColumn})::double precision as avg_volume`
+      : "NULL::double precision as avg_volume",
+    avgTurnoverColumn
+      ? `AVG(g.${avgTurnoverColumn})::double precision as avg_turnover`
+      : "NULL::double precision as avg_turnover",
     rsiColumn
       ? `(ARRAY_AGG(g.${rsiColumn} ORDER BY g.trade_date DESC))[1] as latest_rsi`
       : "NULL::double precision as latest_rsi",
@@ -464,6 +478,8 @@ export async function fetchScreenerRows(
         movement?.rangeVolatility ?? toNumber(row.avg_volatility_5d),
       avg_volume_spike_ratio: toNumber(row.avg_volume_spike_ratio),
       avg_intraday_strength: toNumber(row.avg_intraday_strength),
+      avg_volume: toNumber(row.avg_volume),
+      avg_turnover: toNumber(row.avg_turnover),
       latest_rsi: toNumber(row.latest_rsi),
       latest_apx: toNumber(row.latest_apx),
       fraction_up: toNumber(row.fraction_up),
@@ -684,11 +700,20 @@ export async function fetchSymbolSeries(
     : featureColumns.has("turnover")
     ? "turnover"
     : null
+  const openColumn = featureColumns.has("open") ? "open" : null
+  const highColumn = featureColumns.has("high") ? "high" : null
+  const lowColumn = featureColumns.has("low") ? "low" : null
   if (!volumeColumn) {
     missingColumns.push("volume")
   } else {
     usedColumns.push(volumeColumn)
   }
+  if (!openColumn) missingColumns.push("open")
+  if (openColumn) usedColumns.push("open")
+  if (!highColumn) missingColumns.push("high")
+  if (highColumn) usedColumns.push("high")
+  if (!lowColumn) missingColumns.push("low")
+  if (lowColumn) usedColumns.push("low")
 
   const hasDailyReturn = featureColumns.has("daily_return")
   const hasMomentum = featureColumns.has("momentum_5d")
@@ -703,6 +728,15 @@ export async function fetchSymbolSeries(
 
   const select = [
     "to_char(g.trade_date, 'YYYY-MM-DD') as trade_date",
+    openColumn
+      ? `g.${openColumn} as open`
+      : "NULL::double precision as open",
+    highColumn
+      ? `g.${highColumn} as high`
+      : "NULL::double precision as high",
+    lowColumn
+      ? `g.${lowColumn} as low`
+      : "NULL::double precision as low",
     priceColumn
       ? `g.${priceColumn} as close`
       : "NULL::double precision as close",
@@ -733,6 +767,9 @@ export async function fetchSymbolSeries(
 
   const series = seriesResult.rows.map((row) => ({
     trade_date: row.trade_date,
+    open: toNumber(row.open),
+    high: toNumber(row.high),
+    low: toNumber(row.low),
     close: toNumber(row.close),
     volume: toNumber(row.volume),
     daily_return: toNumber(row.daily_return),
@@ -783,5 +820,122 @@ export async function fetchSymbolSeries(
     meta,
     missingColumns: uniqueMissing,
     usedColumns: uniqueUsed,
+  }
+}
+
+async function resolveEventsTable() {
+  const candidates = ["saudi_equity_events", "saudi_equity_corporate_events"]
+  for (const tableName of candidates) {
+    const result = await query<{ table_exists: boolean }>(
+      `SELECT to_regclass($1) IS NOT NULL as table_exists`,
+      [`public.${tableName}`]
+    )
+    if (result.rows[0]?.table_exists) {
+      return tableName
+    }
+  }
+  return null
+}
+
+export async function fetchSymbolEvents(symbol: string, start: string, end: string) {
+  const tableName = await resolveEventsTable()
+  if (!tableName) {
+    return {
+      events: [] as SymbolEvent[],
+      missingColumns: ["saudi_equity_events"],
+      usedColumns: [] as string[],
+    }
+  }
+
+  const columns = await getAvailableColumns(tableName)
+  const symbolColumn = columns.has("symbol")
+    ? "symbol"
+    : columns.has("ticker")
+    ? "ticker"
+    : null
+  const dateColumn = columns.has("event_date")
+    ? "event_date"
+    : columns.has("trade_date")
+    ? "trade_date"
+    : columns.has("date")
+    ? "date"
+    : null
+  const typeColumn = columns.has("event_type")
+    ? "event_type"
+    : columns.has("type")
+    ? "type"
+    : columns.has("category")
+    ? "category"
+    : null
+  const titleColumn = columns.has("event_title")
+    ? "event_title"
+    : columns.has("title")
+    ? "title"
+    : columns.has("event_name")
+    ? "event_name"
+    : null
+  const descriptionColumn = columns.has("description")
+    ? "description"
+    : columns.has("details")
+    ? "details"
+    : columns.has("notes")
+    ? "notes"
+    : null
+
+  const missingColumns: string[] = []
+  const usedColumns: string[] = []
+  if (!symbolColumn) missingColumns.push("symbol")
+  if (!dateColumn) missingColumns.push("event_date")
+  if (symbolColumn) usedColumns.push(symbolColumn)
+  if (dateColumn) usedColumns.push(dateColumn)
+  if (typeColumn) usedColumns.push(typeColumn)
+  if (titleColumn) usedColumns.push(titleColumn)
+  if (descriptionColumn) usedColumns.push(descriptionColumn)
+
+  if (!symbolColumn || !dateColumn) {
+    return {
+      events: [] as SymbolEvent[],
+      missingColumns,
+      usedColumns,
+    }
+  }
+
+  const result = await query<SymbolEvent>(
+    `
+    SELECT
+      to_char(e.${dateColumn}, 'YYYY-MM-DD') as event_date,
+      ${
+        typeColumn
+          ? `e.${typeColumn}::text`
+          : "NULL::text"
+      } as event_type,
+      ${
+        titleColumn
+          ? `e.${titleColumn}::text`
+          : "NULL::text"
+      } as event_title,
+      ${
+        descriptionColumn
+          ? `e.${descriptionColumn}::text`
+          : "NULL::text"
+      } as description
+    FROM public.${tableName} e
+    WHERE e.${symbolColumn} = $1
+      AND e.${dateColumn} BETWEEN $2 AND $3
+    ORDER BY e.${dateColumn} DESC
+    LIMIT 50
+  `,
+    [symbol, start, end]
+  )
+
+  return {
+    events: result.rows.map((row) => ({
+      event_date: row.event_date,
+      event_type: row.event_type ?? null,
+      event_title: row.event_title ?? null,
+      description: row.description ?? null,
+    })),
+    missingColumns,
+    usedColumns,
   }
 }

@@ -13,7 +13,8 @@ import { ScenarioPanel } from "@/components/dashboard/ScenarioPanel"
 import { ScreenerTable } from "@/components/dashboard/ScreenerTable"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { percentFormatter } from "@/lib/format"
+import { Input } from "@/components/ui/input"
+import { numberFormatter, percentFormatter } from "@/lib/format"
 import { defaultScenario } from "@/lib/scoring"
 import type { ScreenerResponse, SymbolMeta } from "@/lib/types"
 
@@ -60,6 +61,34 @@ type SymbolsPayload = {
   missingColumns: string[]
 }
 
+type SavedScan = {
+  id: string
+  name: string
+  filters: FilterState
+  sortBy: string
+  sortDir: "asc" | "desc"
+}
+
+const WATCHLIST_KEY = "stocks-hunter:watchlist"
+const SAVED_SCANS_KEY = "stocks-hunter:saved-scans"
+
+const cloneFilters = (value: FilterState): FilterState => ({
+  rangeMode: "rolling",
+  rangeDays: value.rangeDays === 21 || value.rangeDays === 28 ? value.rangeDays : 14,
+  name: value.name ?? "",
+  scoreRange:
+    Array.isArray(value.scoreRange) && value.scoreRange.length === 2
+      ? [value.scoreRange[0], value.scoreRange[1]]
+      : [0, 100],
+  minPrice: value.minPrice ?? "",
+  minAvgVolume: value.minAvgVolume ?? "",
+  minAvgTurnover: value.minAvgTurnover ?? "",
+  symbols: Array.isArray(value.symbols) ? [...value.symbols] : [],
+  sectors: Array.isArray(value.sectors) ? [...value.sectors] : [],
+  markets: Array.isArray(value.markets) ? [...value.markets] : [],
+  activeOnly: value.activeOnly ?? true,
+})
+
 const readApiError = async (response: Response, fallback: string) => {
   try {
     const payload = (await response.json()) as { error?: string }
@@ -77,6 +106,9 @@ export function DashboardPage() {
     rangeDays: 14,
     name: "",
     scoreRange: [0, 100],
+    minPrice: "",
+    minAvgVolume: "",
+    minAvgTurnover: "",
     symbols: [],
     sectors: [],
     markets: [],
@@ -93,6 +125,15 @@ export function DashboardPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [mobileScenarioOpen, setMobileScenarioOpen] = useState(false)
+  const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([])
+  const [savedScans, setSavedScans] = useState<SavedScan[]>([])
+  const [savedScanName, setSavedScanName] = useState("")
+  const [selectedSavedScanId, setSelectedSavedScanId] = useState("")
+  const [riskAccountSize, setRiskAccountSize] = useState("100000")
+  const [riskPercent, setRiskPercent] = useState("1")
+  const [riskEntry, setRiskEntry] = useState("")
+  const [riskStop, setRiskStop] = useState("")
+  const [alertThreshold, setAlertThreshold] = useState("80")
 
   const dateRange = useMemo(
     () => resolveRollingDateRange(filters.rangeDays),
@@ -137,6 +178,26 @@ export function DashboardPage() {
       const [scoreMin, scoreMax] = filters.scoreRange
       if (scoreMin > 0) params.set("scoreMin", String(scoreMin))
       if (scoreMax < 100) params.set("scoreMax", String(scoreMax))
+      const minPrice = Number(filters.minPrice)
+      if (filters.minPrice.trim() && Number.isFinite(minPrice) && minPrice >= 0) {
+        params.set("minPrice", String(minPrice))
+      }
+      const minAvgVolume = Number(filters.minAvgVolume)
+      if (
+        filters.minAvgVolume.trim() &&
+        Number.isFinite(minAvgVolume) &&
+        minAvgVolume >= 0
+      ) {
+        params.set("minAvgVolume", String(minAvgVolume))
+      }
+      const minAvgTurnover = Number(filters.minAvgTurnover)
+      if (
+        filters.minAvgTurnover.trim() &&
+        Number.isFinite(minAvgTurnover) &&
+        minAvgTurnover >= 0
+      ) {
+        params.set("minAvgTurnover", String(minAvgTurnover))
+      }
       params.set("page", String(page))
       params.set("pageSize", String(pageSize))
       params.set("sortBy", sortBy)
@@ -177,6 +238,52 @@ export function DashboardPage() {
   useEffect(() => {
     fetchSymbols()
   }, [fetchSymbols])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const watchlistRaw = window.localStorage.getItem(WATCHLIST_KEY)
+      if (watchlistRaw) {
+        const parsed = JSON.parse(watchlistRaw) as unknown
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed
+            .filter((item): item is string => typeof item === "string" && item.length > 0)
+            .map((item) => item.toUpperCase())
+          setWatchlistSymbols(Array.from(new Set(cleaned)))
+        }
+      }
+      const scansRaw = window.localStorage.getItem(SAVED_SCANS_KEY)
+      if (scansRaw) {
+        const parsed = JSON.parse(scansRaw) as unknown
+        if (Array.isArray(parsed)) {
+          const safeScans = parsed
+            .filter(
+              (item): item is SavedScan =>
+                typeof item === "object" &&
+                item !== null &&
+                typeof (item as SavedScan).id === "string" &&
+                typeof (item as SavedScan).name === "string" &&
+                typeof (item as SavedScan).filters === "object" &&
+                item !== null
+            )
+            .slice(0, 20)
+          setSavedScans(safeScans)
+        }
+      }
+    } catch {
+      // Ignore malformed local storage payloads.
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    window.localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlistSymbols))
+  }, [watchlistSymbols])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    window.localStorage.setItem(SAVED_SCANS_KEY, JSON.stringify(savedScans))
+  }, [savedScans])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -240,6 +347,89 @@ export function DashboardPage() {
     []
   )
 
+  const handleToggleWatchlist = useCallback((symbol: string) => {
+    setWatchlistSymbols((prev) => {
+      const normalized = symbol.toUpperCase()
+      if (prev.includes(normalized)) {
+        return prev.filter((item) => item !== normalized)
+      }
+      return [...prev, normalized]
+    })
+  }, [])
+
+  const saveCurrentScan = useCallback(() => {
+    const name = savedScanName.trim()
+    if (!name) return
+    const next: SavedScan = {
+      id: `scan-${Date.now()}`,
+      name,
+      filters: cloneFilters(filters),
+      sortBy,
+      sortDir,
+    }
+    setSavedScans((prev) => [next, ...prev].slice(0, 20))
+    setSavedScanName("")
+    setSelectedSavedScanId(next.id)
+  }, [filters, savedScanName, sortBy, sortDir])
+
+  const applySavedScan = useCallback(
+    (scanId: string) => {
+      setSelectedSavedScanId(scanId)
+      const selected = savedScans.find((scan) => scan.id === scanId)
+      if (!selected) return
+      setFilters(cloneFilters(selected.filters))
+      setSortBy(selected.sortBy)
+      setSortDir(selected.sortDir)
+      setPage(1)
+    },
+    [savedScans]
+  )
+
+  const deleteSavedScan = useCallback(
+    (scanId: string) => {
+      setSavedScans((prev) => prev.filter((scan) => scan.id !== scanId))
+      if (selectedSavedScanId === scanId) {
+        setSelectedSavedScanId("")
+      }
+    },
+    [selectedSavedScanId]
+  )
+
+  const applyTopMoversQuickAction = useCallback(() => {
+    setSortBy("avg_daily_return")
+    setSortDir("desc")
+    setPage(1)
+  }, [])
+
+  const applyWatchlistQuickAction = useCallback(() => {
+    if (!watchlistSymbols.length) return
+    setFilters((prev) => ({ ...prev, symbols: [...watchlistSymbols] }))
+    setPage(1)
+  }, [watchlistSymbols])
+
+  const applyHighScoreQuickAction = useCallback(() => {
+    setFilters((prev) => ({ ...prev, scoreRange: [70, 100] }))
+    setSortBy("score")
+    setSortDir("desc")
+    setPage(1)
+  }, [])
+
+  const applyAlertsQuickAction = useCallback(() => {
+    const threshold = Number(alertThreshold)
+    const safeThreshold =
+      Number.isFinite(threshold) && threshold >= 0 && threshold <= 100
+        ? threshold
+        : 80
+    setFilters((prev) => ({
+      ...prev,
+      symbols: [...watchlistSymbols],
+      scoreRange: [safeThreshold, 100],
+    }))
+    setSortBy("score")
+    setSortDir("desc")
+    setPage(1)
+  }, [alertThreshold, watchlistSymbols])
+
   const totalPages = screenerData
     ? Math.ceil(screenerData.total / screenerData.pageSize)
     : 1
@@ -263,6 +453,64 @@ export function DashboardPage() {
   const avgScoreTitle = useMemo(() => {
     return `Universe average score. Score formula per symbol: 100 - (down days x (100 / ${filters.rangeDays})).`
   }, [filters.rangeDays])
+
+  const watchlistRows = useMemo(() => {
+    if (!screenerData) return []
+    const symbols = new Set(watchlistSymbols)
+    return screenerData.rows.filter((row) => symbols.has(row.symbol))
+  }, [screenerData, watchlistSymbols])
+
+  const scoreAlerts = useMemo(() => {
+    const threshold = Number(alertThreshold)
+    const safeThreshold =
+      Number.isFinite(threshold) && threshold >= 0 && threshold <= 100
+        ? threshold
+        : 80
+    return watchlistRows.filter((row) => row.score >= safeThreshold)
+  }, [alertThreshold, watchlistRows])
+
+  const dataQuality = screenerData?.dataQuality
+  const dataQualityClass =
+    dataQuality?.status === "fresh"
+      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      : dataQuality?.status === "stale"
+      ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+      : "border-destructive/40 bg-destructive/10 text-destructive"
+
+  const riskMetrics = useMemo(() => {
+    const account = Number(riskAccountSize)
+    const riskPct = Number(riskPercent)
+    const entry = Number(riskEntry)
+    const stop = Number(riskStop)
+
+    if (
+      !Number.isFinite(account) ||
+      !Number.isFinite(riskPct) ||
+      !Number.isFinite(entry) ||
+      !Number.isFinite(stop) ||
+      account <= 0 ||
+      riskPct <= 0 ||
+      entry <= 0 ||
+      stop <= 0
+    ) {
+      return null
+    }
+
+    const riskAmount = (account * riskPct) / 100
+    const perShareRisk = Math.abs(entry - stop)
+    if (perShareRisk <= 0) return null
+    const quantity = Math.floor(riskAmount / perShareRisk)
+    const positionValue = quantity * entry
+    const targetPrice = entry > stop ? entry + 2 * perShareRisk : entry - 2 * perShareRisk
+
+    return {
+      riskAmount,
+      perShareRisk,
+      quantity,
+      positionValue,
+      targetPrice,
+    }
+  }, [riskAccountSize, riskPercent, riskEntry, riskStop])
 
   return (
     <div className="grid gap-4 md:gap-6 lg:grid-cols-[320px_1fr]">
@@ -366,6 +614,38 @@ export function DashboardPage() {
             Scenario
           </Button>
         </div>
+        <Card className="space-y-3 border-border/70 bg-card/60 p-3 lg:hidden">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Quick Actions
+            </p>
+            <h3 className="text-sm font-semibold">Personalized workflow</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Button size="sm" variant="secondary" onClick={applyTopMoversQuickAction}>
+              Top movers
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={applyWatchlistQuickAction}
+              disabled={watchlistSymbols.length === 0}
+            >
+              My watchlist
+            </Button>
+            <Button size="sm" variant="secondary" onClick={applyHighScoreQuickAction}>
+              High-score
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={applyAlertsQuickAction}
+              disabled={watchlistSymbols.length === 0}
+            >
+              My alerts
+            </Button>
+          </div>
+        </Card>
         <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
           <Card className="flex flex-col gap-4 border-border/70 bg-card/60 p-3 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -376,6 +656,18 @@ export function DashboardPage() {
                 <h2 className="text-xl font-semibold">Market pulse</h2>
               </div>
               <div className="flex items-center gap-2">
+                {dataQuality ? (
+                  <span
+                    className={`rounded-md border px-2 py-1 text-[11px] ${dataQualityClass}`}
+                    title={`Coverage ${dataQuality.coverageStart ?? "-"} to ${dataQuality.coverageEnd ?? "-"}. Missing symbols: ${dataQuality.missingSymbols}.`}
+                  >
+                    {dataQuality.status === "fresh"
+                      ? "Fresh data"
+                      : dataQuality.status === "stale"
+                      ? "Stale data"
+                      : "Coverage gaps"}
+                  </span>
+                ) : null}
                 <Button
                   variant="secondary"
                   size="sm"
@@ -430,6 +722,16 @@ export function DashboardPage() {
                 </p>
               </Card>
             </div>
+            <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              Score model:{" "}
+              {`100 - (down days x (100 / ${filters.rangeDays}))`}.{" "}
+              {dataQuality?.latestTradeDate
+                ? `Latest trade date: ${dataQuality.latestTradeDate}.`
+                : null}{" "}
+              {dataQuality?.lagDays !== null && dataQuality?.lagDays !== undefined
+                ? `Data lag: ${dataQuality.lagDays} day(s).`
+                : null}
+            </div>
             <DashboardScoreLineChart series={screenerData?.marketSeries ?? []} />
             {screenerData?.missingColumns?.length ? (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
@@ -440,6 +742,153 @@ export function DashboardPage() {
           <div className="hidden lg:block">
             <ScenarioPanel scenario={scenario} onChange={setScenario} />
           </div>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-3">
+          <Card className="space-y-3 border-border/70 bg-card/60 p-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Workspace
+              </p>
+              <h3 className="text-base font-semibold">Watchlist & scans</h3>
+            </div>
+            <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+              <div className="rounded-md border border-border/60 bg-muted/30 px-2 py-1">
+                Watchlist: {watchlistSymbols.length} symbol(s)
+              </div>
+              <div className="rounded-md border border-border/60 bg-muted/30 px-2 py-1">
+                Active alerts: {scoreAlerts.length}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={savedScanName}
+                onChange={(event) => setSavedScanName(event.target.value)}
+                placeholder="Save current scan name"
+              />
+              <Button size="sm" onClick={saveCurrentScan} disabled={!savedScanName.trim()}>
+                Save
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedSavedScanId}
+                onChange={(event) => applySavedScan(event.target.value)}
+                aria-label="Saved scans"
+                className="h-9 w-full rounded-md border border-border/60 bg-muted/30 px-2 text-sm"
+              >
+                <option value="">Select saved scan</option>
+                {savedScans.map((scan) => (
+                  <option key={scan.id} value={scan.id}>
+                    {scan.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => selectedSavedScanId && deleteSavedScan(selectedSavedScanId)}
+                disabled={!selectedSavedScanId}
+              >
+                Delete
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="space-y-3 border-border/70 bg-card/60 p-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Risk Module
+              </p>
+              <h3 className="text-base font-semibold">Position sizing</h3>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input
+                value={riskAccountSize}
+                onChange={(event) => setRiskAccountSize(event.target.value)}
+                inputMode="decimal"
+                placeholder="Account size"
+                aria-label="Account size"
+              />
+              <Input
+                value={riskPercent}
+                onChange={(event) => setRiskPercent(event.target.value)}
+                inputMode="decimal"
+                placeholder="Risk %"
+                aria-label="Risk percent"
+              />
+              <Input
+                value={riskEntry}
+                onChange={(event) => setRiskEntry(event.target.value)}
+                inputMode="decimal"
+                placeholder="Entry price"
+                aria-label="Entry price"
+              />
+              <Input
+                value={riskStop}
+                onChange={(event) => setRiskStop(event.target.value)}
+                inputMode="decimal"
+                placeholder="Stop loss"
+                aria-label="Stop loss"
+              />
+            </div>
+            <div className="grid gap-2 text-xs sm:grid-cols-2">
+              <div className="rounded-md border border-border/60 bg-muted/30 px-2 py-1">
+                Risk amount:{" "}
+                {riskMetrics ? numberFormatter.format(riskMetrics.riskAmount) : "-"}
+              </div>
+              <div className="rounded-md border border-border/60 bg-muted/30 px-2 py-1">
+                Per-share risk:{" "}
+                {riskMetrics ? numberFormatter.format(riskMetrics.perShareRisk) : "-"}
+              </div>
+              <div className="rounded-md border border-border/60 bg-muted/30 px-2 py-1">
+                Qty: {riskMetrics ? numberFormatter.format(riskMetrics.quantity) : "-"}
+              </div>
+              <div className="rounded-md border border-border/60 bg-muted/30 px-2 py-1">
+                Position value:{" "}
+                {riskMetrics ? numberFormatter.format(riskMetrics.positionValue) : "-"}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              2R target: {riskMetrics ? numberFormatter.format(riskMetrics.targetPrice) : "-"}
+            </p>
+          </Card>
+
+          <Card className="space-y-3 border-border/70 bg-card/60 p-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Alerts
+              </p>
+              <h3 className="text-base font-semibold">Watchlist score alerts</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={alertThreshold}
+                onChange={(event) => setAlertThreshold(event.target.value)}
+                inputMode="decimal"
+                placeholder="Alert threshold"
+                aria-label="Alert threshold"
+              />
+              <Button size="sm" variant="secondary" onClick={applyAlertsQuickAction}>
+                Apply
+              </Button>
+            </div>
+            <div className="space-y-1 text-xs">
+              {scoreAlerts.length === 0 ? (
+                <p className="text-muted-foreground">No watchlist symbols above threshold.</p>
+              ) : (
+                scoreAlerts.slice(0, 6).map((row) => (
+                  <div
+                    key={row.symbol}
+                    className="flex items-center justify-between rounded-md border border-border/60 bg-muted/30 px-2 py-1"
+                  >
+                    <span>{row.symbol}</span>
+                    <span className="font-semibold">{row.score.toFixed(2)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
         </div>
 
         {error ? <ErrorBanner message={error} /> : null}
@@ -462,6 +911,8 @@ export function DashboardPage() {
               onRowClick={handleRowClick}
               selectedSymbols={filters.symbols}
               onToggleSymbolFilter={handleToggleSymbolFilter}
+              watchlistSymbols={watchlistSymbols}
+              onToggleWatchlist={handleToggleWatchlist}
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-xs text-muted-foreground">

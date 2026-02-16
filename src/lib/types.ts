@@ -17,6 +17,9 @@ export type ScreenerFilters = {
   activeOnly?: boolean
   scoreMin?: number
   scoreMax?: number
+  minPrice?: number
+  minAvgVolume?: number
+  minAvgTurnover?: number
 }
 
 export type ScreenerRow = {
@@ -33,6 +36,8 @@ export type ScreenerRow = {
   avg_volatility_5d?: number | null
   avg_volume_spike_ratio?: number | null
   avg_intraday_strength?: number | null
+  avg_volume?: number | null
+  avg_turnover?: number | null
   latest_rsi?: number | null
   latest_apx?: number | null
   fraction_up?: number | null
@@ -64,11 +69,21 @@ export type ScreenerRowScored = ScreenerRow & {
 
 export type SeriesPoint = {
   trade_date: string
+  open?: number | null
+  high?: number | null
+  low?: number | null
   close?: number | null
   volume?: number | null
   daily_return?: number | null
   momentum_5d?: number | null
   volatility_5d?: number | null
+}
+
+export type SymbolEvent = {
+  event_date: string
+  event_type: string | null
+  event_title: string | null
+  description: string | null
 }
 
 export type MarketSeriesPoint = {
@@ -104,5 +119,14 @@ export type ScreenerResponse = {
   summary?: {
     avgScore: number | null
     avgDailyReturn: number | null
+  }
+  dataQuality?: {
+    latestTradeDate: string | null
+    lagDays: number | null
+    coverageStart: string | null
+    coverageEnd: string | null
+    missingSymbols: number
+    backfillRowsInserted: number
+    status: "fresh" | "stale" | "incomplete"
   }
 }
