@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { FlaskConical, SlidersHorizontal, X } from "lucide-react"
 
@@ -141,6 +141,7 @@ export function DashboardPage() {
   const [riskEntry, setRiskEntry] = useState("")
   const [riskStop, setRiskStop] = useState("")
   const [alertThreshold, setAlertThreshold] = useState("80")
+  const tableSectionRef = useRef<HTMLDivElement | null>(null)
 
   const dateRange = useMemo(
     () => resolveRollingDateRange(filters.rangeDays),
@@ -437,6 +438,10 @@ export function DashboardPage() {
     setPage(1)
   }, [alertThreshold, watchlistSymbols])
 
+  const scrollToTable = useCallback(() => {
+    tableSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }, [])
+
   const totalPages = screenerData
     ? Math.ceil(screenerData.total / screenerData.pageSize)
     : 1
@@ -520,7 +525,7 @@ export function DashboardPage() {
   }, [riskAccountSize, riskPercent, riskEntry, riskStop])
 
   return (
-    <div className="grid gap-4 md:gap-6 lg:grid-cols-[320px_1fr]">
+    <div className="grid gap-4 md:gap-6 lg:h-[calc(100dvh-190px)] lg:grid-cols-[320px_1fr]">
       {mobileFiltersOpen ? (
         <div
           className="fixed inset-0 z-50 bg-black/60 lg:hidden"
@@ -587,7 +592,10 @@ export function DashboardPage() {
         </div>
       ) : null}
 
-      <aside className="hidden space-y-4 lg:block" aria-label="Dashboard filters">
+      <aside
+        className="hidden space-y-4 overflow-y-auto pr-1 lg:block"
+        aria-label="Dashboard filters"
+      >
         {symbolsData ? (
           <FiltersSidebar
             symbols={symbolsData.symbols}
@@ -600,7 +608,7 @@ export function DashboardPage() {
           <LoadingState label="Loading filters..." />
         )}
       </aside>
-      <main className="space-y-4 md:space-y-6">
+      <main className="space-y-4 overflow-y-auto pr-1 scroll-smooth md:space-y-6">
         <div className="grid grid-cols-2 gap-2 lg:hidden">
           <Button
             variant="secondary"
@@ -675,6 +683,9 @@ export function DashboardPage() {
                       : "Coverage gaps"}
                   </span>
                 ) : null}
+                <Button variant="secondary" size="sm" onClick={scrollToTable}>
+                  Jump to table
+                </Button>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -909,75 +920,77 @@ export function DashboardPage() {
           </Card>
         </div>
 
-        {error ? <ErrorBanner message={error} /> : null}
+        <div ref={tableSectionRef}>
+          {error ? <ErrorBanner message={error} /> : null}
 
-        {loading && !screenerData ? (
-          <LoadingState />
-        ) : screenerData && screenerData.rows.length === 0 ? (
-          <EmptyState
-            title="No symbols found"
-            subtitle="Adjust the filters or expand the date range."
-          />
-        ) : screenerData ? (
-          <>
-            <ScreenerTable
-              rows={screenerData.rows}
-              sortBy={sortBy}
-              sortDir={sortDir}
-              rangeDays={filters.rangeDays}
-              onSortChange={onSortChange}
-              onRowClick={handleRowClick}
-              selectedSymbols={filters.symbols}
-              onToggleSymbolFilter={handleToggleSymbolFilter}
-              watchlistSymbols={watchlistSymbols}
-              onToggleWatchlist={handleToggleWatchlist}
+          {loading && !screenerData ? (
+            <LoadingState />
+          ) : screenerData && screenerData.rows.length === 0 ? (
+            <EmptyState
+              title="No symbols found"
+              subtitle="Adjust the filters or expand the date range."
             />
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs text-muted-foreground">
-                Showing {(page - 1) * pageSize + 1}-
-                {Math.min(page * pageSize, screenerData.total)} of{" "}
-                {screenerData.total} results
+          ) : screenerData ? (
+            <>
+              <ScreenerTable
+                rows={screenerData.rows}
+                sortBy={sortBy}
+                sortDir={sortDir}
+                rangeDays={filters.rangeDays}
+                onSortChange={onSortChange}
+                onRowClick={handleRowClick}
+                selectedSymbols={filters.symbols}
+                onToggleSymbolFilter={handleToggleSymbolFilter}
+                watchlistSymbols={watchlistSymbols}
+                onToggleWatchlist={handleToggleWatchlist}
+              />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs text-muted-foreground">
+                  Showing {(page - 1) * pageSize + 1}-
+                  {Math.min(page * pageSize, screenerData.total)} of{" "}
+                  {screenerData.total} results
+                </div>
+                <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="flex-1 sm:flex-none"
+                    disabled={page <= 1}
+                    onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                  >
+                    Prev
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="flex-1 sm:flex-none"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                  >
+                    Next
+                  </Button>
+                  <select
+                    value={pageSize}
+                    onChange={(event) => setPageSize(Number(event.target.value))}
+                    aria-label="Rows per page"
+                    className="rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-xs text-foreground"
+                  >
+                    {[25, 50, 100].map((size) => (
+                      <option key={size} value={size}>
+                        {size} rows
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="flex-1 sm:flex-none"
-                  disabled={page <= 1}
-                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                >
-                  Prev
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  Page {page} of {totalPages}
-                </span>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="flex-1 sm:flex-none"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-                >
-                  Next
-                </Button>
-                <select
-                  value={pageSize}
-                  onChange={(event) => setPageSize(Number(event.target.value))}
-                  aria-label="Rows per page"
-                  className="rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-xs text-foreground"
-                >
-                  {[25, 50, 100].map((size) => (
-                    <option key={size} value={size}>
-                      {size} rows
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </>
-        ) : (
-          <LoadingState />
-        )}
+            </>
+          ) : (
+            <LoadingState />
+          )}
+        </div>
       </main>
     </div>
   )
