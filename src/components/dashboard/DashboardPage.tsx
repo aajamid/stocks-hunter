@@ -14,6 +14,13 @@ import { ScreenerTable } from "@/components/dashboard/ScreenerTable"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { numberFormatter, percentFormatter } from "@/lib/format"
 import { defaultScenario } from "@/lib/scoring"
 import type { ScreenerResponse, SymbolMeta } from "@/lib/types"
@@ -771,19 +778,30 @@ export function DashboardPage() {
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              <select
-                value={selectedSavedScanId}
-                onChange={(event) => applySavedScan(event.target.value)}
-                aria-label="Saved scans"
-                className="h-9 w-full rounded-md border border-border/60 bg-muted/30 px-2 text-sm"
+              <Select
+                value={selectedSavedScanId || undefined}
+                onValueChange={applySavedScan}
               >
-                <option value="">Select saved scan</option>
-                {savedScans.map((scan) => (
-                  <option key={scan.id} value={scan.id}>
-                    {scan.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger
+                  aria-label="Saved scans"
+                  className="h-9 w-full border-border/60 bg-muted/30"
+                >
+                  <SelectValue placeholder="Select saved scan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {savedScans.length === 0 ? (
+                    <SelectItem value="no-scan" disabled>
+                      No saved scans
+                    </SelectItem>
+                  ) : (
+                    savedScans.map((scan) => (
+                      <SelectItem key={scan.id} value={scan.id}>
+                        {scan.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
               <Button
                 size="sm"
                 variant="secondary"
