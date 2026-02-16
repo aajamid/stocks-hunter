@@ -140,11 +140,7 @@ export async function fetchScreenerRows(
   const missingColumns: string[] = []
   const usedColumns: string[] = []
 
-  const priceColumn = featureColumns.has("close")
-    ? "close"
-    : featureColumns.has("adjusted_close")
-    ? "adjusted_close"
-    : null
+  const priceColumn = featureColumns.has("close") ? "close" : null
   if (!priceColumn) {
     missingColumns.push("close")
   } else {
@@ -526,11 +522,7 @@ export async function fetchMarketPriceSeries(
   const missingColumns: string[] = []
   const usedColumns: string[] = []
 
-  const priceColumn = featureColumns.has("close")
-    ? "close"
-    : featureColumns.has("adjusted_close")
-    ? "adjusted_close"
-    : null
+  const priceColumn = featureColumns.has("close") ? "close" : null
   const openColumn = featureColumns.has("open") ? "open" : null
   const highColumn = featureColumns.has("high") ? "high" : null
   const lowColumn = featureColumns.has("low") ? "low" : null
@@ -701,11 +693,7 @@ export async function fetchSymbolSeries(
   const missingColumns: string[] = []
   const usedColumns: string[] = []
 
-  const priceColumn = featureColumns.has("close")
-    ? "close"
-    : featureColumns.has("adjusted_close")
-    ? "adjusted_close"
-    : null
+  const priceColumn = featureColumns.has("close") ? "close" : null
   if (!priceColumn) {
     missingColumns.push("close")
   } else {
