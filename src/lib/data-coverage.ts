@@ -5,6 +5,8 @@ import { query } from "@/lib/db"
 const COVERAGE_TTL_MS = 24 * 60 * 60 * 1000
 const COVERAGE_RETRY_TTL_MS = 5 * 60 * 1000
 const DEFAULT_TARGET_BUSINESS_DAYS = 28
+const COVERAGE_TABLE = "saudi_equity_googlefinance_daily"
+const BACKFILL_SOURCE_TABLE = "saudi_equity_ohlcv_daily"
 
 type CoverageIssue = {
   symbol: string
@@ -62,28 +64,13 @@ const normalizeRangeDays = (value: number): 14 | 21 | 28 =>
     : DEFAULT_TARGET_BUSINESS_DAYS
 
 async function getLatestAvailableTradeDate() {
-  let result
-  try {
-    result = await query<{ latest_trade_date: Date | string | null }>(
-      `
-      SELECT MAX(trade_date) as latest_trade_date
-      FROM (
-        SELECT trade_date FROM public.gold_saudi_equity_daily_features
-        UNION ALL
-        SELECT trade_date FROM public.saudi_equity_ohlcv_daily
-      ) t
-    `,
-      []
-    )
-  } catch {
-    result = await query<{ latest_trade_date: Date | string | null }>(
-      `
-      SELECT MAX(trade_date) as latest_trade_date
-      FROM public.gold_saudi_equity_daily_features
-    `,
-      []
-    )
-  }
+  const result = await query<{ latest_trade_date: Date | string | null }>(
+    `
+    SELECT MAX(trade_date) as latest_trade_date
+    FROM public.${COVERAGE_TABLE}
+  `,
+    []
+  )
 
   const rawValue = result.rows[0]?.latest_trade_date
   if (!rawValue) {
@@ -109,7 +96,7 @@ async function getMissingCoverage(
       s.symbol,
       COUNT(DISTINCT g.trade_date)::int as day_count
     FROM public.saudi_equity_symbols s
-    LEFT JOIN public.gold_saudi_equity_daily_features g
+    LEFT JOIN public.${COVERAGE_TABLE} g
       ON g.symbol = s.symbol
       AND g.trade_date BETWEEN $1 AND $2
     WHERE s.is_active = true
@@ -127,8 +114,8 @@ async function getMissingCoverage(
 }
 
 async function tryBackfillFromOhlcv(start: string, end: string) {
-  const targetColumns = await getAvailableColumns("gold_saudi_equity_daily_features")
-  const sourceColumns = await getAvailableColumns("saudi_equity_ohlcv_daily")
+  const targetColumns = await getAvailableColumns(COVERAGE_TABLE)
+  const sourceColumns = await getAvailableColumns(BACKFILL_SOURCE_TABLE)
 
   if (targetColumns.size === 0 || sourceColumns.size === 0) {
     return 0
@@ -141,9 +128,11 @@ async function tryBackfillFromOhlcv(start: string, end: string) {
     "high",
     "low",
     "close",
+    "adjusted",
     "adjusted_close",
     "volume",
     "turnover",
+    "source",
   ]
   const insertColumns = candidateColumns.filter(
     (column) => targetColumns.has(column) && sourceColumns.has(column)
@@ -159,13 +148,13 @@ async function tryBackfillFromOhlcv(start: string, end: string) {
   const result = await query<{ inserted_count: number }>(
     `
     WITH inserted AS (
-      INSERT INTO public.gold_saudi_equity_daily_features (${insertColumnSql})
+      INSERT INTO public.${COVERAGE_TABLE} (${insertColumnSql})
       SELECT ${selectColumns}
-      FROM public.saudi_equity_ohlcv_daily o
+      FROM public.${BACKFILL_SOURCE_TABLE} o
       INNER JOIN public.saudi_equity_symbols s
         ON s.symbol = o.symbol
         AND s.is_active = true
-      LEFT JOIN public.gold_saudi_equity_daily_features g
+      LEFT JOIN public.${COVERAGE_TABLE} g
         ON g.symbol = o.symbol
         AND g.trade_date = o.trade_date
       WHERE g.symbol IS NULL

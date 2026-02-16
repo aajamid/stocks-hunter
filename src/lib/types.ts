@@ -38,6 +38,8 @@ export type ScreenerRow = {
   avg_intraday_strength?: number | null
   avg_volume?: number | null
   avg_turnover?: number | null
+  high52?: number | null
+  low52?: number | null
   latest_rsi?: number | null
   latest_apx?: number | null
   fraction_up?: number | null

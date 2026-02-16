@@ -23,6 +23,8 @@ const sortableFields = new Set([
   "avg_volume_spike_ratio",
   "avg_volume",
   "avg_turnover",
+  "high52",
+  "low52",
   "latest_rsi",
   "latest_apx",
 ])
@@ -146,6 +148,8 @@ export async function GET(request: NextRequest) {
         { key: "avg_volatility_5d", label: "avg_volatility_5d" },
         { key: "avg_volume", label: "avg_volume" },
         { key: "avg_turnover", label: "avg_turnover" },
+        { key: "high52", label: "high52" },
+        { key: "low52", label: "low52" },
         { key: "latest_rsi", label: "latest_rsi" },
         { key: "latest_apx", label: "latest_apx" },
         { key: "score", label: "score" },

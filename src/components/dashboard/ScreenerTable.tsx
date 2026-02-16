@@ -55,6 +55,12 @@ const getHeaderTooltip = (key: string, rangeDays: 14 | 21 | 28) => {
   if (key === "avg_turnover") {
     return "Average turnover over selected range."
   }
+  if (key === "high52") {
+    return "Latest 52-week high value."
+  }
+  if (key === "low52") {
+    return "Latest 52-week low value."
+  }
   if (key === "latest_rsi") {
     return "Latest RSI value as of the most recent trade date in the selected range."
   }
@@ -94,6 +100,8 @@ export function ScreenerTable({
       },
       { key: "avg_volume", label: "Avg Volume", align: "right" },
       { key: "avg_turnover", label: "Avg Turnover", align: "right" },
+      { key: "high52", label: "High 52W", align: "right" },
+      { key: "low52", label: "Low 52W", align: "right" },
       { key: "latest_rsi", label: "RSI", align: "right" },
       { key: "latest_apx", label: "APX", align: "right" },
       { key: "score", label: "Score", align: "right" },
@@ -201,6 +209,18 @@ export function ScreenerTable({
                     ? compactFormatter.format(row.avg_turnover)
                     : "-"}
                 </div>
+                <div className="text-muted-foreground">High 52W</div>
+                <div className="text-right">
+                  {row.high52 !== null && row.high52 !== undefined
+                    ? numberFormatter.format(row.high52)
+                    : "-"}
+                </div>
+                <div className="text-muted-foreground">Low 52W</div>
+                <div className="text-right">
+                  {row.low52 !== null && row.low52 !== undefined
+                    ? numberFormatter.format(row.low52)
+                    : "-"}
+                </div>
                 <div className="text-muted-foreground">RSI</div>
                 <div className="text-right">
                   {row.latest_rsi !== null && row.latest_rsi !== undefined
@@ -250,6 +270,7 @@ export function ScreenerTable({
                 >
                   {header.key === "symbol" ||
                   header.key.startsWith("latest_") ||
+                  header.key.includes("52") ||
                   header.key.includes("avg") ||
                   header.key === "score" ? (
                     <Button
@@ -372,6 +393,24 @@ export function ScreenerTable({
                       ? (
                           <span title="Average turnover across selected range.">
                             {compactFormatter.format(row.avg_turnover)}
+                          </span>
+                        )
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row.high52 !== null && row.high52 !== undefined
+                      ? (
+                          <span title="Latest 52-week high.">
+                            {numberFormatter.format(row.high52)}
+                          </span>
+                        )
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {row.low52 !== null && row.low52 !== undefined
+                      ? (
+                          <span title="Latest 52-week low.">
+                            {numberFormatter.format(row.low52)}
                           </span>
                         )
                       : "-"}

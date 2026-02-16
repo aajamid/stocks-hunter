@@ -11,6 +11,7 @@ import type {
 } from "@/lib/types"
 
 const SYMBOLS_TTL_MS = 5 * 60 * 1000
+const FEATURE_TABLE = "saudi_equity_googlefinance_daily"
 
 const toNumber = (value: unknown) => {
   if (value === null || value === undefined) return null
@@ -41,7 +42,7 @@ async function applyRollingWindow(
     `
     WITH selected_dates AS (
       SELECT DISTINCT g.trade_date
-      FROM public.gold_saudi_equity_daily_features g
+      FROM public.${FEATURE_TABLE} g
       LEFT JOIN public.saudi_equity_symbols s
         ON g.symbol = s.symbol
       WHERE ${where.join(" AND ")}
@@ -133,9 +134,7 @@ export async function fetchScreenerRows(
   filters: ScreenerFilters,
   rangeDays?: 14 | 21 | 28
 ) {
-  const featureColumns = await getAvailableColumns(
-    "gold_saudi_equity_daily_features"
-  )
+  const featureColumns = await getAvailableColumns(FEATURE_TABLE)
   const symbolColumns = await getAvailableColumns("saudi_equity_symbols")
 
   const missingColumns: string[] = []
@@ -190,6 +189,16 @@ export async function fetchScreenerRows(
     : featureColumns.has("adx_14")
     ? "adx_14"
     : null
+  const high52Column = featureColumns.has("high52")
+    ? "high52"
+    : featureColumns.has("high_52")
+    ? "high_52"
+    : null
+  const low52Column = featureColumns.has("low52")
+    ? "low52"
+    : featureColumns.has("low_52")
+    ? "low_52"
+    : null
 
   if (!hasDailyReturn) missingColumns.push("daily_return")
   if (hasDailyReturn) usedColumns.push("daily_return")
@@ -207,6 +216,10 @@ export async function fetchScreenerRows(
   if (rsiColumn) usedColumns.push(rsiColumn)
   if (!apxColumn) missingColumns.push("apx")
   if (apxColumn) usedColumns.push(apxColumn)
+  if (!high52Column) missingColumns.push("high52")
+  if (high52Column) usedColumns.push(high52Column)
+  if (!low52Column) missingColumns.push("low52")
+  if (low52Column) usedColumns.push(low52Column)
 
   const hasNameEn = symbolColumns.has("name_en")
   const hasNameAr = symbolColumns.has("name_ar")
@@ -265,6 +278,12 @@ export async function fetchScreenerRows(
     avgTurnoverColumn
       ? `AVG(g.${avgTurnoverColumn})::double precision as avg_turnover`
       : "NULL::double precision as avg_turnover",
+    high52Column
+      ? `(ARRAY_AGG(g.${high52Column} ORDER BY g.trade_date DESC))[1] as high52`
+      : "NULL::double precision as high52",
+    low52Column
+      ? `(ARRAY_AGG(g.${low52Column} ORDER BY g.trade_date DESC))[1] as low52`
+      : "NULL::double precision as low52",
     rsiColumn
       ? `(ARRAY_AGG(g.${rsiColumn} ORDER BY g.trade_date DESC))[1] as latest_rsi`
       : "NULL::double precision as latest_rsi",
@@ -351,7 +370,7 @@ export async function fetchScreenerRows(
   const result = await query<ScreenerRow>(
     `
     SELECT ${select.join(", ")}
-    FROM public.gold_saudi_equity_daily_features g
+    FROM public.${FEATURE_TABLE} g
     LEFT JOIN public.saudi_equity_symbols s
       ON g.symbol = s.symbol
     WHERE ${scopedWhere.join(" AND ")}
@@ -387,7 +406,7 @@ export async function fetchScreenerRows(
           g.symbol,
           g.${priceColumn} as price_value,
           LAG(g.${priceColumn}) OVER (PARTITION BY g.symbol ORDER BY g.trade_date) as prev_price
-        FROM public.gold_saudi_equity_daily_features g
+        FROM public.${FEATURE_TABLE} g
         LEFT JOIN public.saudi_equity_symbols s
           ON g.symbol = s.symbol
         WHERE ${scopedWhere.join(" AND ")}
@@ -480,6 +499,8 @@ export async function fetchScreenerRows(
       avg_intraday_strength: toNumber(row.avg_intraday_strength),
       avg_volume: toNumber(row.avg_volume),
       avg_turnover: toNumber(row.avg_turnover),
+      high52: toNumber(row.high52),
+      low52: toNumber(row.low52),
       latest_rsi: toNumber(row.latest_rsi),
       latest_apx: toNumber(row.latest_apx),
       fraction_up: toNumber(row.fraction_up),
@@ -499,9 +520,7 @@ export async function fetchMarketPriceSeries(
   filters: ScreenerFilters,
   rangeDays?: 14 | 21 | 28
 ) {
-  const featureColumns = await getAvailableColumns(
-    "gold_saudi_equity_daily_features"
-  )
+  const featureColumns = await getAvailableColumns(FEATURE_TABLE)
   const symbolColumns = await getAvailableColumns("saudi_equity_symbols")
 
   const missingColumns: string[] = []
@@ -642,7 +661,7 @@ export async function fetchMarketPriceSeries(
       } as avg_low,
       AVG(g.${priceColumn})::double precision as avg_close,
       COUNT(DISTINCT g.symbol)::int as symbol_count
-    FROM public.gold_saudi_equity_daily_features g
+    FROM public.${FEATURE_TABLE} g
     LEFT JOIN public.saudi_equity_symbols s
       ON g.symbol = s.symbol
     WHERE ${scopedWhere.join(" AND ")}
@@ -676,9 +695,7 @@ export async function fetchSymbolSeries(
   start: string,
   end: string
 ) {
-  const featureColumns = await getAvailableColumns(
-    "gold_saudi_equity_daily_features"
-  )
+  const featureColumns = await getAvailableColumns(FEATURE_TABLE)
   const symbolColumns = await getAvailableColumns("saudi_equity_symbols")
 
   const missingColumns: string[] = []
@@ -757,7 +774,7 @@ export async function fetchSymbolSeries(
   const seriesResult = await query<SeriesPoint>(
     `
     SELECT ${select.join(", ")}
-    FROM public.gold_saudi_equity_daily_features g
+    FROM public.${FEATURE_TABLE} g
     WHERE g.symbol = $1
       AND g.trade_date BETWEEN $2 AND $3
     ORDER BY g.trade_date ASC
