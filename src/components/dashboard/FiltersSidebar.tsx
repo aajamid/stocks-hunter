@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useMemo } from "react"
+
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -45,7 +47,36 @@ export function FiltersSidebar({
   filters,
   onChange,
 }: FiltersSidebarProps) {
-  const symbolOptions = symbols.map((symbol) => ({
+  const availableSymbols = useMemo(() => {
+    return symbols.filter((symbol) => {
+      if (filters.sectors.length) {
+        const sector = symbol.sector ?? ""
+        if (!filters.sectors.includes(sector)) return false
+      }
+      if (filters.markets.length) {
+        const market = symbol.market ?? ""
+        if (!filters.markets.includes(market)) return false
+      }
+      if (filters.activeOnly && symbol.is_active === false) return false
+      return true
+    })
+  }, [filters.activeOnly, filters.markets, filters.sectors, symbols])
+
+  const availableSymbolSet = useMemo(
+    () => new Set(availableSymbols.map((symbol) => symbol.symbol)),
+    [availableSymbols]
+  )
+
+  useEffect(() => {
+    if (filters.symbols.length === 0) return
+    const nextSymbols = filters.symbols.filter((symbol) =>
+      availableSymbolSet.has(symbol)
+    )
+    if (nextSymbols.length === filters.symbols.length) return
+    onChange({ ...filters, symbols: nextSymbols })
+  }, [availableSymbolSet, filters, onChange])
+
+  const symbolOptions = availableSymbols.map((symbol) => ({
     value: symbol.symbol,
     label: `${symbol.symbol} ${symbol.name_en ? `- ${symbol.name_en}` : ""}`.trim(),
   }))
