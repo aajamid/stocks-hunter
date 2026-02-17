@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 
+import { requireAuth, requirePermission } from "@/lib/auth/guard"
 import { toCsv } from "@/lib/csv"
 import { ensureRecentBusinessDayCoverage } from "@/lib/data-coverage"
 import { fetchMarketPriceSeries, fetchScreenerRows } from "@/lib/queries"
@@ -46,6 +47,11 @@ function sortRows(
 
 export async function GET(request: NextRequest) {
   try {
+    const { context, error } = await requireAuth(request)
+    if (!context) return error
+    const permissionError = requirePermission(context, "investments:read")
+    if (permissionError) return permissionError
+
     const { searchParams } = new URL(request.url)
     const rangeDays = parseRangeDays(searchParams)
     const coverage = await ensureRecentBusinessDayCoverage(rangeDays)

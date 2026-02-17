@@ -1,9 +1,15 @@
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 
+import { requireAuth, requirePermission } from "@/lib/auth/guard"
 import { fetchSymbolsList } from "@/lib/queries"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { context, error } = await requireAuth(request)
+    if (!context) return error
+    const permissionError = requirePermission(context, "investments:read")
+    if (permissionError) return permissionError
+
     const data = await fetchSymbolsList()
     return NextResponse.json(data)
   } catch (error) {

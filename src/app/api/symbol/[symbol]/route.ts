@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 
+import { requireAuth, requirePermission } from "@/lib/auth/guard"
 import { ensureRecentBusinessDayCoverage } from "@/lib/data-coverage"
 import { computeSummary } from "@/lib/metrics"
 import { fetchScreenerRows, fetchSymbolEvents, fetchSymbolSeries } from "@/lib/queries"
@@ -16,6 +17,11 @@ export async function GET(
   context: { params: Promise<{ symbol: string }> }
 ) {
   try {
+    const { context: auth, error } = await requireAuth(request)
+    if (!auth) return error
+    const permissionError = requirePermission(auth, "investments:read")
+    if (permissionError) return permissionError
+
     const { searchParams } = new URL(request.url)
     const rangeDays = parseRangeDays(searchParams)
     const coverage = await ensureRecentBusinessDayCoverage(rangeDays)
