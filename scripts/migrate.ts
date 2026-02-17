@@ -1,7 +1,18 @@
+import { existsSync } from "node:fs"
 import { readdir, readFile } from "node:fs/promises"
 import path from "node:path"
 
 import { Pool, type PoolConfig } from "pg"
+
+function loadLocalEnv() {
+  if (typeof process.loadEnvFile !== "function") return
+
+  const envLocal = path.join(process.cwd(), ".env.local")
+  const envFile = path.join(process.cwd(), ".env")
+
+  if (existsSync(envLocal)) process.loadEnvFile(envLocal)
+  if (existsSync(envFile)) process.loadEnvFile(envFile)
+}
 
 function createPool() {
   const connectionString = process.env.DATABASE_URL?.trim()
@@ -122,6 +133,7 @@ async function main() {
   const projectRoot = process.cwd()
   const migrationsDir = path.join(projectRoot, "db", "migrations")
 
+  loadLocalEnv()
   const pool = createPool()
   try {
     await ensureMigrationsTable(pool)

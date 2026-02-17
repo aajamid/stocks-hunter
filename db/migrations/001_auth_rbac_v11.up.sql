@@ -85,11 +85,15 @@ CREATE INDEX IF NOT EXISTS audit_logs_actor_user_id_idx
 CREATE INDEX IF NOT EXISTS audit_logs_action_idx
   ON public.audit_logs (action);
 
-ALTER TABLE IF EXISTS public.app_scenarios
-  ADD COLUMN IF NOT EXISTS owner_user_id UUID REFERENCES public.users(id) ON DELETE SET NULL;
-
-CREATE INDEX IF NOT EXISTS app_scenarios_owner_user_id_idx
-  ON public.app_scenarios (owner_user_id);
+DO $$
+BEGIN
+  IF to_regclass('public.app_scenarios') IS NOT NULL THEN
+    ALTER TABLE public.app_scenarios
+      ADD COLUMN IF NOT EXISTS owner_user_id UUID REFERENCES public.users(id) ON DELETE SET NULL;
+    CREATE INDEX IF NOT EXISTS app_scenarios_owner_user_id_idx
+      ON public.app_scenarios (owner_user_id);
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.app_migrations (
   id BIGSERIAL PRIMARY KEY,

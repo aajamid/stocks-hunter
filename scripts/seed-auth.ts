@@ -1,11 +1,54 @@
+import { existsSync } from "node:fs"
+import path from "node:path"
+
+import bcrypt from "bcryptjs"
 import { Pool, type PoolConfig } from "pg"
 
-import { hashPassword, normalizeEmail } from "../src/lib/auth/crypto"
-import {
-  defaultPermissions,
-  defaultRolePermissions,
-  defaultRoles,
-} from "../src/lib/auth/rbac"
+const defaultPermissions = [
+  { key: "investments:read", description: "Read screener and symbol investment data." },
+  { key: "investments:write", description: "Create and update user investment artifacts." },
+  { key: "admin:users:read", description: "View users in the admin panel." },
+  { key: "admin:users:manage", description: "Create/update/deactivate users." },
+  { key: "admin:roles:read", description: "View roles in the admin panel." },
+  { key: "admin:roles:manage", description: "Create/update roles and mappings." },
+  { key: "admin:permissions:read", description: "View permissions list." },
+  { key: "admin:audit:read", description: "View security and admin audit logs." },
+  { key: "admin:all", description: "Platform super admin access." },
+] as const
+
+const defaultRoles = [
+  { name: "ADMIN", description: "Full access to all resources and admin controls." },
+  { name: "MANAGER", description: "Manage investments and team workflows." },
+  { name: "ANALYST", description: "Analyze and save investment scenarios." },
+  { name: "VIEWER", description: "Read-only access to investment data." },
+] as const
+
+const defaultRolePermissions: Record<string, string[]> = {
+  ADMIN: defaultPermissions.map((permission) => permission.key),
+  MANAGER: ["investments:read", "investments:write"],
+  ANALYST: ["investments:read", "investments:write"],
+  VIEWER: ["investments:read"],
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase()
+}
+
+function parsePositiveInt(value: string | undefined, fallback: number) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback
+  return Math.floor(parsed)
+}
+
+function loadLocalEnv() {
+  if (typeof process.loadEnvFile !== "function") return
+
+  const envLocal = path.join(process.cwd(), ".env.local")
+  const envFile = path.join(process.cwd(), ".env")
+
+  if (existsSync(envLocal)) process.loadEnvFile(envLocal)
+  if (existsSync(envFile)) process.loadEnvFile(envFile)
+}
 
 function createPool() {
   const connectionString = process.env.DATABASE_URL?.trim()
@@ -41,16 +84,19 @@ function createPool() {
 }
 
 async function main() {
+  loadLocalEnv()
+
   const adminEmailRaw = process.env.ADMIN_EMAIL?.trim()
   const adminPassword = process.env.ADMIN_PASSWORD?.trim()
   const adminName = process.env.ADMIN_NAME?.trim() || "Admin User"
+  const bcryptRounds = parsePositiveInt(process.env.AUTH_BCRYPT_ROUNDS, 12)
 
   if (!adminEmailRaw || !adminPassword) {
     throw new Error("ADMIN_EMAIL and ADMIN_PASSWORD are required for auth seeding.")
   }
 
   const adminEmail = normalizeEmail(adminEmailRaw)
-  const passwordHash = await hashPassword(adminPassword)
+  const passwordHash = await bcrypt.hash(adminPassword, bcryptRounds)
 
   const pool = createPool()
   const client = await pool.connect()
