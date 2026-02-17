@@ -47,6 +47,11 @@ export function FiltersSidebar({
   filters,
   onChange,
 }: FiltersSidebarProps) {
+  const symbolByCode = useMemo(
+    () => new Map(symbols.map((symbol) => [symbol.symbol, symbol])),
+    [symbols]
+  )
+
   const availableSymbols = useMemo(() => {
     return symbols.filter((symbol) => {
       if (filters.sectors.length) {
@@ -226,7 +231,20 @@ export function FiltersSidebar({
         label="Symbols"
         options={symbolOptions}
         selected={filters.symbols}
-        onChange={(symbols) => onChange({ ...filters, symbols })}
+        onChange={(nextSymbols) => {
+          const nextSectors = Array.from(
+            new Set(
+              nextSymbols
+                .map((symbolCode) => symbolByCode.get(symbolCode)?.sector ?? "")
+                .filter((sector): sector is string => sector.length > 0)
+            )
+          )
+          onChange({
+            ...filters,
+            symbols: nextSymbols,
+            sectors: nextSymbols.length > 0 ? nextSectors : filters.sectors,
+          })
+        }}
         searchable
         placeholder="Filter symbols"
       />
