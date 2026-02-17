@@ -1,8 +1,6 @@
 import Image from "next/image"
-import Link from "next/link"
 
-import { ThemeToggle } from "@/components/layout/ThemeToggle"
-import { Button } from "@/components/ui/button"
+import { AuthNav } from "@/components/layout/AuthNav"
 
 type AppShellProps = {
   title: string
@@ -35,18 +33,7 @@ export function AppShell({ title, subtitle, children }: AppShellProps) {
             </p>
           ) : null}
         </div>
-        <nav
-          className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end"
-          aria-label="Primary navigation"
-        >
-          <ThemeToggle />
-          <Button asChild variant="secondary" size="sm" className="flex-1 sm:flex-none">
-            <Link href="/">Dashboard</Link>
-          </Button>
-          <Button asChild variant="ghost" size="sm" className="flex-1 sm:flex-none">
-            <Link href="/scenarios">Scenarios</Link>
-          </Button>
-        </nav>
+        <AuthNav />
       </header>
       {children}
     </div>
