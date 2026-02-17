@@ -151,6 +151,14 @@ export function DashboardPage() {
   const fetchSymbols = useCallback(async () => {
     try {
       const response = await fetch("/api/symbols")
+      if (response.status === 401) {
+        const nextPath =
+          typeof window !== "undefined"
+            ? `${window.location.pathname}${window.location.search}`
+            : "/"
+        router.replace(`/login?next=${encodeURIComponent(nextPath)}`)
+        return
+      }
       if (!response.ok) {
         const errorMessage = await readApiError(
           response,
@@ -161,14 +169,13 @@ export function DashboardPage() {
       const payload = (await response.json()) as SymbolsPayload
       setSymbolsData(payload)
     } catch (err) {
-      console.error(err)
       setError(
         err instanceof Error
           ? err.message
           : "Failed to load symbol metadata."
       )
     }
-  }, [])
+  }, [router])
 
   const buildQueryString = useCallback(
     (format?: "csv") => {
@@ -224,6 +231,14 @@ export function DashboardPage() {
     setError(null)
     try {
       const response = await fetch(`/api/screener?${buildQueryString()}`)
+      if (response.status === 401) {
+        const nextPath =
+          typeof window !== "undefined"
+            ? `${window.location.pathname}${window.location.search}`
+            : "/"
+        router.replace(`/login?next=${encodeURIComponent(nextPath)}`)
+        return
+      }
       if (!response.ok) {
         const errorMessage = await readApiError(
           response,
@@ -234,14 +249,13 @@ export function DashboardPage() {
       const payload = (await response.json()) as ScreenerResponse
       setScreenerData(payload)
     } catch (err) {
-      console.error(err)
       setError(
         err instanceof Error ? err.message : "Failed to load screener data."
       )
     } finally {
       setLoading(false)
     }
-  }, [buildQueryString])
+  }, [buildQueryString, router])
 
   useEffect(() => {
     fetchSymbols()
