@@ -10,7 +10,6 @@ import {
   parseFormat,
   parsePagination,
   parseRangeDays,
-  parseScenarioConfig,
   parseScreenerFilters,
   parseSort,
 } from "@/lib/validators"
@@ -60,7 +59,6 @@ export async function GET(request: NextRequest) {
     }
 
     const filters = parseScreenerFilters(searchParams)
-    const scenario = parseScenarioConfig(searchParams)
     const { page, pageSize } = parsePagination(searchParams)
     const { sortBy, sortDir } = parseSort(searchParams)
     const format = parseFormat(searchParams)
@@ -75,7 +73,7 @@ export async function GET(request: NextRequest) {
       usedColumns: screenerUsedColumns,
     } = screenerRowsResult
 
-    const scored = scoreRows(rows, scenario, rangeDays)
+    const scored = scoreRows(rows, undefined, rangeDays)
     const liquidityFiltered = scored.filter((row) => {
       if (
         typeof filters.minPrice === "number" &&

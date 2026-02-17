@@ -8,7 +8,6 @@ import { scoreRows } from "@/lib/scoring"
 import {
   parseDateRange,
   parseRangeDays,
-  parseScenarioConfig,
   parseScreenerFilters,
 } from "@/lib/validators"
 
@@ -35,7 +34,6 @@ export async function GET(
       throw new Error("Symbol parameter is missing")
     }
     const { start, end } = parseDateRange(searchParams)
-    const scenario = parseScenarioConfig(searchParams)
 
     const baseFilters = parseScreenerFilters(searchParams)
     const universeFilters = {
@@ -53,7 +51,7 @@ export async function GET(
     const eventsData = await fetchSymbolEvents(symbol, start, end)
 
     const summary = computeSummary(seriesData.series)
-    const scoredRows = scoreRows(screenerData.rows, scenario, rangeDays)
+    const scoredRows = scoreRows(screenerData.rows, undefined, rangeDays)
     const scoreRow = scoredRows.find((row) => row.symbol === symbol) ?? null
 
     return NextResponse.json({

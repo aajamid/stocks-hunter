@@ -31,7 +31,7 @@ const jetBrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Saudi Stocks Hunter",
-  description: "Saudi equity screener, analytics, and scenario testing.",
+  description: "Saudi equity screener, analytics, and notes timeline.",
 }
 
 export default function RootLayout({

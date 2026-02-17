@@ -87,7 +87,7 @@ export function AuthNav() {
         <Link href="/">Dashboard</Link>
       </Button>
       <Button asChild variant="ghost" size="sm" className="flex-1 sm:flex-none">
-        <Link href="/scenarios">Scenarios</Link>
+        <Link href="/notes">Notes</Link>
       </Button>
       {me ? (
         <>

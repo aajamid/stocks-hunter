@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { FlaskConical, SlidersHorizontal, X } from "lucide-react"
+import { SlidersHorizontal, X } from "lucide-react"
 
 import { ErrorBanner } from "@/components/common/ErrorBanner"
 import { EmptyState } from "@/components/common/EmptyState"
 import { LoadingState } from "@/components/common/LoadingState"
 import { DashboardScoreLineChart } from "@/components/charts/DashboardScoreLineChart"
 import { FiltersSidebar, type FilterState } from "@/components/dashboard/FiltersSidebar"
-import { ScenarioPanel } from "@/components/dashboard/ScenarioPanel"
 import { ScreenerTable } from "@/components/dashboard/ScreenerTable"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -22,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { numberFormatter, percentFormatter } from "@/lib/format"
-import { defaultScenario } from "@/lib/scoring"
 import type { ScreenerResponse, SymbolMeta } from "@/lib/types"
 
 const toDateString = (date: Date) => date.toISOString().slice(0, 10)
@@ -121,7 +119,6 @@ export function DashboardPage() {
     markets: [],
     activeOnly: true,
   })
-  const [scenario, setScenario] = useState(defaultScenario)
   const [symbolsData, setSymbolsData] = useState<SymbolsPayload | null>(null)
   const [screenerData, setScreenerData] = useState<ScreenerResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -131,7 +128,6 @@ export function DashboardPage() {
   const [sortBy, setSortBy] = useState("score")
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-  const [mobileScenarioOpen, setMobileScenarioOpen] = useState(false)
   const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([])
   const [savedScans, setSavedScans] = useState<SavedScan[]>([])
   const [savedScanName, setSavedScanName] = useState("")
@@ -218,12 +214,10 @@ export function DashboardPage() {
       params.set("sortBy", sortBy)
       params.set("sortDir", sortDir)
       params.set("rangeDays", String(filters.rangeDays))
-      params.set("weights", JSON.stringify(scenario.weights))
-      params.set("thresholds", JSON.stringify(scenario.thresholds))
       if (format) params.set("format", format)
       return params.toString()
     },
-    [dateRange, filters, page, pageSize, scenario, sortBy, sortDir]
+    [dateRange, filters, page, pageSize, sortBy, sortDir]
   )
 
   const fetchScreener = useCallback(async () => {
@@ -316,10 +310,10 @@ export function DashboardPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [filters, scenario, sortBy, sortDir, pageSize])
+  }, [filters, sortBy, sortDir, pageSize])
 
   useEffect(() => {
-    if (mobileFiltersOpen || mobileScenarioOpen) {
+    if (mobileFiltersOpen) {
       document.body.style.overflow = "hidden"
       return () => {
         document.body.style.overflow = ""
@@ -329,7 +323,7 @@ export function DashboardPage() {
     return () => {
       document.body.style.overflow = ""
     }
-  }, [mobileFiltersOpen, mobileScenarioOpen])
+  }, [mobileFiltersOpen])
 
   const onSortChange = (field: string) => {
     if (sortBy === field) {
@@ -348,8 +342,6 @@ export function DashboardPage() {
     if (filters.markets.length) params.set("markets", filters.markets.join(","))
     if (filters.activeOnly) params.set("activeOnly", "true")
     params.set("rangeDays", String(filters.rangeDays))
-    params.set("weights", JSON.stringify(scenario.weights))
-    params.set("thresholds", JSON.stringify(scenario.thresholds))
     router.push(`/symbol/${symbol}?${params.toString()}`)
   }
 
@@ -578,34 +570,6 @@ export function DashboardPage() {
         </div>
       ) : null}
 
-      {mobileScenarioOpen ? (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 lg:hidden"
-          onClick={() => setMobileScenarioOpen(false)}
-          aria-hidden="true"
-        >
-          <aside
-            className="absolute right-0 top-0 h-full w-[92vw] max-w-sm overflow-y-auto border-l border-border/60 bg-background p-4"
-            aria-label="Scenario settings"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Scenario Weights</h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setMobileScenarioOpen(false)}
-                aria-label="Close scenario settings"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <ScenarioPanel scenario={scenario} onChange={setScenario} />
-          </aside>
-        </div>
-      ) : null}
-
       <aside
         className="hidden space-y-4 overflow-y-auto pr-1 lg:block"
         aria-label="Dashboard filters"
@@ -623,7 +587,7 @@ export function DashboardPage() {
         )}
       </aside>
       <main className="space-y-4 overflow-y-auto pr-1 scroll-smooth md:space-y-6">
-        <div className="grid grid-cols-2 gap-2 lg:hidden">
+        <div className="grid grid-cols-1 gap-2 lg:hidden">
           <Button
             variant="secondary"
             size="sm"
@@ -632,15 +596,6 @@ export function DashboardPage() {
           >
             <SlidersHorizontal className="mr-1 h-4 w-4" />
             Filters
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="w-full"
-            onClick={() => setMobileScenarioOpen(true)}
-          >
-            <FlaskConical className="mr-1 h-4 w-4" />
-            Scenario
           </Button>
         </div>
         <Card className="space-y-3 border-border/70 bg-card/60 p-3 lg:hidden">
@@ -675,7 +630,7 @@ export function DashboardPage() {
             </Button>
           </div>
         </Card>
-        <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid gap-4">
           <Card className="flex flex-col gap-4 border-border/70 bg-card/60 p-3 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -771,9 +726,6 @@ export function DashboardPage() {
               </div>
             ) : null}
           </Card>
-          <div className="hidden lg:block">
-            <ScenarioPanel scenario={scenario} onChange={setScenario} />
-          </div>
         </div>
 
         <div className="grid gap-4 xl:grid-cols-3">

@@ -1,15 +1,15 @@
 # Saudi Stocks Hunter
 
-Production-grade Saudi equity screener and scenario testing app built with Next.js App Router, TypeScript, TailwindCSS, shadcn/ui, Recharts, and PostgreSQL.
+Production-grade Saudi equity screener and notes timeline app built with Next.js App Router, TypeScript, TailwindCSS, shadcn/ui, Recharts, and PostgreSQL.
 
 ## Features
 
 - Dark-first dashboard with filters (date range, company, symbol, sector, market, active-only)
 - Per-symbol aggregation (latest close, avg return, momentum, volatility, score)
-- Score explanation and scenario testing with live recalculation
+- Score explanation with timeline note-taking and comments (public/private visibility)
 - Detail page with price/volume + indicator charts and summary stats
 - CSV export for the screener
-- Scenario library backed by `app_scenarios` (optional)
+- Notes timeline backed by `app_notes` and `app_note_comments`
 - Graceful handling of missing columns
 
 ## Tech Stack
@@ -169,26 +169,21 @@ WHERE table_schema = 'public'
   AND table_name = 'saudi_equity_symbols';
 ```
 
-### Scenario Table (Optional)
+### Notes Tables
 
-Create the `app_scenarios` table if you want scenario persistence:
+Notes and comments are persisted in:
 
-```
-CREATE TABLE IF NOT EXISTS public.app_scenarios (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  config JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
+- `public.app_notes`
+- `public.app_note_comments`
 
 ## API Endpoints
 
 - `GET /api/symbols`
 - `GET /api/screener`
 - `GET /api/symbol/[symbol]`
-- `GET/POST/PUT/DELETE /api/scenarios`
+- `GET/POST /api/notes`
+- `PATCH/DELETE /api/notes/[id]`
+- `POST /api/notes/[id]/comments`
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
