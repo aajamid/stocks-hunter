@@ -60,6 +60,16 @@ type MePayload = {
   }
 }
 
+function isStrongPassword(value: string) {
+  return (
+    value.length >= 10 &&
+    /[A-Z]/.test(value) &&
+    /[a-z]/.test(value) &&
+    /\d/.test(value) &&
+    /[^A-Za-z0-9]/.test(value)
+  )
+}
+
 async function readApiError(response: Response, fallback: string) {
   const payload = (await response.json().catch(() => null)) as { error?: string } | null
   return payload?.error ?? fallback
@@ -104,6 +114,18 @@ export function AdminPage() {
   const selectedRole = useMemo(
     () => roles.find((role) => role.id === selectedRoleId) ?? null,
     [roles, selectedRoleId]
+  )
+  const isCreateUserPasswordValid = useMemo(
+    () => isStrongPassword(newUserPassword),
+    [newUserPassword]
+  )
+  const canCreateUser = useMemo(
+    () =>
+      !saving &&
+      newUserEmail.trim().length > 0 &&
+      newUserName.trim().length > 0 &&
+      isCreateUserPasswordValid,
+    [isCreateUserPasswordValid, newUserEmail, newUserName, saving]
   )
 
   const refreshUsers = useCallback(async () => {
@@ -189,6 +211,12 @@ export function AdminPage() {
   }, [permissions, selectedRole])
 
   const createUser = async () => {
+    if (!isCreateUserPasswordValid) {
+      setError(
+        "Password must be at least 10 characters and include uppercase, lowercase, number, and symbol."
+      )
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -378,13 +406,16 @@ export function AdminPage() {
                 onChange={(event) => setNewUserPassword(event.target.value)}
                 placeholder="Temporary password"
                 type="password"
+                minLength={10}
               />
             </div>
+            <p className="text-xs text-muted-foreground">
+              Password rules: at least 10 chars, with uppercase, lowercase,
+              number, and symbol.
+            </p>
             <Button
               onClick={createUser}
-              disabled={
-                saving || !newUserEmail.trim() || !newUserName.trim() || !newUserPassword
-              }
+              disabled={!canCreateUser}
             >
               Create user
             </Button>

@@ -40,8 +40,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const parsed = createUserPayloadSchema.safeParse(body)
     if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0]
+      const field =
+        firstIssue?.path?.length && typeof firstIssue.path[0] === "string"
+          ? firstIssue.path[0]
+          : null
       return NextResponse.json(
-        { error: "Invalid payload.", details: parsed.error.flatten() },
+        {
+          error: firstIssue
+            ? `${field ? `${field}: ` : ""}${firstIssue.message}`
+            : "Invalid payload.",
+          details: parsed.error.flatten(),
+        },
         { status: 400 }
       )
     }
